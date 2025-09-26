@@ -24,7 +24,7 @@ app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    service: 'Nashville Carrier Service (Standalone)',
+    service: 'Enzy Delivery Carrier Service (Development)',
     version: '1.0.0'
   });
 });
@@ -32,7 +32,7 @@ app.get('/health', (req, res) => {
 // Root endpoint with information
 app.get('/', (req, res) => {
   res.json({
-    service: 'Nashville Carrier Service',
+    service: 'Enzy Delivery Carrier Service',
     description: 'Provides conditional free shipping for Nashville area deliveries',
     endpoints: {
       health: 'GET /health',
@@ -139,7 +139,7 @@ app.get('/test', async (req, res) => {
   }
 
   res.json({
-    service: 'Nashville Carrier Service Test',
+    service: 'Enzy Delivery Carrier Service Test',
     timestamp: new Date().toISOString(),
     results
   });
@@ -148,7 +148,7 @@ app.get('/test', async (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log(`🚀 Nashville Carrier Service (Standalone) running on port ${PORT}`);
+  console.log(`🚀 Enzy Delivery Carrier Service (Development) running on port ${PORT}`);
   console.log(`📋 Health check: http://localhost:${PORT}/health`);
   console.log(`🧪 Test endpoint: http://localhost:${PORT}/test`);
   console.log(`🚚 Shipping rates: http://localhost:${PORT}/api/shipping-rates`);

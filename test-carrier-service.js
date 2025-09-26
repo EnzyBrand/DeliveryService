@@ -62,6 +62,6 @@ try {
 }
 
 console.log('\n🎉 All Nashville Carrier Service tests passed!');
-console.log('✅ Build: Working');
+console.log('✅ Startup: Working');
 console.log('✅ Tests: Passing');
-console.log('📦 Ready for ngrok deployment');
+console.log('📦 Ready for deployment');
