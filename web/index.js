@@ -1,16 +1,10 @@
 // @ts-check
+
 import dotenv from 'dotenv';
 // Load env from parent directory since .env is at project root
 dotenv.config({ path: '../.env' });
 
-import { join } from "path";
-import { readFileSync } from "fs";
 import express from "express";
-import serveStatic from "serve-static";
-
-import shopify from "./shopify.js";
-import productCreator from "./product-creator.js";
-import PrivacyWebhookHandlers from "./privacy.js";
 import { registerCarrierService, listCarrierServices } from './api/carrier-service.js';
 import { handleShippingRates } from './api/shipping-rates.js';
 
@@ -19,93 +13,79 @@ const PORT = parseInt(
   10
 );
 
-const STATIC_PATH =
-  process.env.NODE_ENV === "production"
-    ? `${process.cwd()}/frontend/dist`
-    : `${process.cwd()}/frontend/`;
-
 const app = express();
 
-// Set up Shopify authentication and webhook handling
-app.get(shopify.config.auth.path, shopify.auth.begin());
-app.get(
-  shopify.config.auth.callbackPath,
-  shopify.auth.callback(),
-  shopify.redirectToShopifyOrAppRoot()
-);
-app.post(
-  shopify.config.webhooks.path,
-  shopify.processWebhooks({ webhookHandlers: PrivacyWebhookHandlers })
-);
+// Enable CORS for external access (Shopify will call these endpoints)
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-// If you are adding routes outside of the /api path, remember to
-// also add a proxy rule for them in web/frontend/vite.config.js
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  next();
+});
 
 app.use(express.json());
 
-// Health check endpoint (no auth needed)
+// Health check endpoint - useful for monitoring and tunnel verification
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() });
+  res.status(200).json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    service: 'Enzy Delivery Carrier Service',
+    version: '1.0.0'
+  });
 });
 
-// Main shipping rates endpoint - Called by Shopify during checkout (no auth needed)
+// Test endpoint for quick verification
+app.get('/test', (req, res) => {
+  res.status(200).json({
+    message: 'Carrier service is running',
+    endpoints: {
+      health: '/health',
+      shipping_rates: '/api/shipping-rates (POST)',
+      register_carrier: '/api/register-carrier (POST)',
+      list_carriers: '/api/list-carriers/:shop/:token (GET)'
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Main shipping rates endpoint - Called by Shopify during checkout
 // This is the critical endpoint that Shopify will call
 app.post('/api/shipping-rates', handleShippingRates);
 
-// Admin endpoints to register carrier service (no auth needed for simplicity)
+// Admin endpoint to register carrier service with Shopify
 app.post('/api/register-carrier', registerCarrierService);
 
-// Admin endpoint to list carrier services (no auth needed for simplicity)
+// Admin endpoint to list carrier services
 app.get('/api/list-carriers/:shop/:token', async (req, res) => {
-  const services = await listCarrierServices(req.params.shop, req.params.token);
-  res.json(services);
-});
-
-// Apply authentication middleware to other API routes
-app.use("/api/*", shopify.validateAuthenticatedSession());
-
-app.get("/api/products/count", async (_req, res) => {
-  const client = new shopify.api.clients.Graphql({
-    session: res.locals.shopify.session,
-  });
-
-  const countData = await client.request(`
-    query shopifyProductCount {
-      productsCount {
-        count
-      }
-    }
-  `);
-
-  res.status(200).send({ count: countData.data.productsCount.count });
-});
-
-app.post("/api/products", async (_req, res) => {
-  let status = 200;
-  let error = null;
-
   try {
-    await productCreator(res.locals.shopify.session);
-  } catch (e) {
-    console.log(`Failed to process products/create: ${e.message}`);
-    status = 500;
-    error = e.message;
+    const services = await listCarrierServices(req.params.shop, req.params.token);
+    res.json(services);
+  } catch (error) {
+    console.error('Error listing carrier services:', error);
+    res.status(500).json({ error: 'Failed to list carrier services' });
   }
-  res.status(status).send({ success: status === 200, error });
 });
 
-app.use(shopify.cspHeaders());
-app.use(serveStatic(STATIC_PATH, { index: false }));
-
-app.use("/*", shopify.ensureInstalledOnShop(), async (_req, res, _next) => {
-  return res
-    .status(200)
-    .set("Content-Type", "text/html")
-    .send(
-      readFileSync(join(STATIC_PATH, "index.html"))
-        .toString()
-        .replace("%VITE_SHOPIFY_API_KEY%", process.env.SHOPIFY_API_KEY || "")
-    );
+// Catch-all for undefined routes
+app.use('*', (req, res) => {
+  res.status(404).json({
+    error: 'Endpoint not found',
+    available_endpoints: ['/health', '/test', '/api/shipping-rates', '/api/register-carrier'],
+    method: req.method,
+    path: req.originalUrl
+  });
 });
 
-app.listen(PORT);
+console.log(`🚀 Enzy Delivery Carrier Service starting on port ${PORT}`);
+console.log(`📍 Health check: http://localhost:${PORT}/health`);
+console.log(`🧪 Test endpoint: http://localhost:${PORT}/test`);
+console.log(`🚚 Shipping rates: http://localhost:${PORT}/api/shipping-rates`);
+
+app.listen(PORT, () => {
+  console.log(`✅ Server running on http://localhost:${PORT}`);
+});
