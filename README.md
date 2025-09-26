@@ -303,16 +303,6 @@ Once deployed, test with actual Shopify checkout using Nashville ZIP codes like:
 
 ---
 
-## 🔧 Configuration
-
-### **Environment Variables:**
-```env
-SHOPIFY_API_KEY=your_shopify_app_api_key
-SHOPIFY_API_SECRET=your_shopify_app_secret
-HOST=localhost
-PORT=3000
-```
-
 ### **Shipping Rate Response Format:**
 ```json
 {
@@ -361,14 +351,14 @@ PORT=3000
 
 ---
 
-## 📝 Configuration
+## 🔧 Configuration
 
 ### **Environment Variables:**
-Currently, no environment variables are required for basic operation. All Nashville ZIP codes and coordinates are hardcoded for reliability.
+**No environment variables are required for basic operation.** All Nashville ZIP codes and coordinates are hardcoded for reliability and fast serverless function startup.
 
-### **Future Configuration Options:**
+### **Optional Future Configuration:**
 ```env
-# Optional future variables for Vercel
+# Optional variables for enhanced features (not currently used)
 SHOPIFY_WEBHOOK_SECRET=your_webhook_secret
 MONITORING_ENDPOINT=your_monitoring_url
 ```
