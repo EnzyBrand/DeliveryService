@@ -1,8 +1,33 @@
-# Nashville Carrier Service Implementation
+# Enzy Delivery Carrier Service for Shopify
+
+> A conditional shipping service that offers free compost delivery within the Nashville metro area during Shopify checkout.
+
+[![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
+[![Shopify](https://img.shields.io/badge/Shopify-CarrierService-7AB55C.svg)](https://shopify.dev/docs/api/admin-rest/2023-07/resources/carrierservice)
 
 ## Overview
 
-This project implements a conditional shipping service for Nashville area deliveries within a Shopify app. Customers in the Nashville delivery zone see a "Free Shipping with Nashville Compost" option during checkout, while others only see standard shipping.
+This Shopify app implements a location-aware carrier service that provides **"Free Shipping with Nashville Compost"** during checkout for customers within a 30km radius of Nashville, Tennessee. Customers outside the delivery zone only see standard shipping options.
+
+### Key Features
+
+- 🌍 **Local-first geocoding** - ZIP-based coordinate lookup with no external API dependencies
+- 📍 **30km delivery radius** - Precise zone validation using Haversine distance calculation
+- 🚚 **Conditional shipping** - Free compost delivery for Nashville area, standard shipping elsewhere
+- 🛡️ **Graceful fallback** - Always returns standard shipping if any errors occur
+- 🧪 **Standalone testing** - OAuth-free development server for carrier service testing
+
+## 📋 Table of Contents
+
+- [Overview](#overview)
+- [Quick Start](#quick-start)
+- [Current Status](#-current-status)
+- [Architecture](#️-architecture)
+- [Testing](#-testing)
+- [Configuration](#-configuration)
+- [Known Issues](#-known-issues)
+- [Deployment](#-deployment-readiness)
+- [Contributing](#-contributing)
 
 ## 🎯 Current Status
 
@@ -17,6 +42,58 @@ This project implements a conditional shipping service for Nashville area delive
 ### 🚧 **In Progress:**
 - **Shopify OAuth Integration**: App preview works but has authentication loop issue
 - **Full Shopify Integration**: Carrier service endpoints are ready but OAuth needs fixing
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js 18+
+- Shopify Partner account
+- Development store for testing
+
+### Installation
+
+1. **Clone and install dependencies:**
+   ```bash
+   git clone <repository-url>
+   cd enzy-delivery-app
+   npm install
+   ```
+
+2. **Set up environment variables:**
+   ```bash
+   # Copy and configure your .env file
+   SHOPIFY_API_KEY=your_shopify_app_api_key
+   SHOPIFY_API_SECRET=your_shopify_app_secret
+   ```
+
+3. **Run tests to verify setup:**
+   ```bash
+   npm run test:carrier
+   ```
+
+4. **Start development server:**
+   ```bash
+   # Option 1: Full Shopify app (has OAuth issues currently)
+   shopify app dev
+
+   # Option 2: Standalone carrier service (recommended for testing)
+   npm run start:standalone
+   ```
+
+### Quick Test
+
+Test the carrier service functionality:
+```bash
+# Start standalone server
+npm run start:standalone
+
+# In another terminal, expose via ngrok
+ngrok http 3000
+
+# Test health endpoint
+curl https://your-ngrok-url.ngrok.io/health
+```
 
 ---
 
@@ -292,5 +369,45 @@ PORT=3000
 
 ---
 
-*Generated on: 2025-09-26*
-*Nashville Carrier Service v1.0.0*
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+### Development Workflow
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Make your changes
+4. Run tests: `npm run test:carrier`
+5. Commit your changes: `git commit -m 'Add amazing feature'`
+6. Push to the branch: `git push origin feature/amazing-feature`
+7. Open a Pull Request
+
+### Reporting Issues
+
+If you encounter any issues or have suggestions:
+1. Check existing issues first
+2. Create a new issue with detailed description
+3. Include steps to reproduce for bugs
+
+## 📄 License
+
+This project is licensed under the UNLICENSED license - see the [package.json](package.json) file for details.
+
+## 🏗️ Built With
+
+- [Node.js](https://nodejs.org/) - JavaScript runtime
+- [Express.js](https://expressjs.com/) - Web framework
+- [Shopify API](https://shopify.dev/docs/api) - Shopify integration
+- [Winston](https://github.com/winstonjs/winston) - Logging
+
+## 📞 Support
+
+For support or questions:
+- Check the [Known Issues](#-known-issues) section
+- Review the [Technical Details](#-technical-details) section
+- Create an issue for bugs or feature requests
+
+---
+
+**Nashville Carrier Service v1.0.0** | Built with ❤️ for sustainable Nashville deliveries
