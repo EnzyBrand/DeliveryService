@@ -159,7 +159,7 @@ Your Website → Customer clicks "Checkout" → Redirects to Shopify Checkout
 
 ### Step 2: Register Carrier Service
 
-Once your service is deployed to Vercel, register it with Shopify:
+The service is already deployed! Register it with Shopify using the production URL:
 
 ```bash
 curl -X POST "https://your-shop.myshopify.com/admin/api/2023-07/carrier_services.json" \
@@ -168,7 +168,7 @@ curl -X POST "https://your-shop.myshopify.com/admin/api/2023-07/carrier_services
   -d '{
     "carrier_service": {
       "name": "Nashville Compost Delivery",
-      "callback_url": "https://your-project.vercel.app/api/shipping-rates",
+      "callback_url": "https://enzy-delivery-carrier-service.vercel.app/api/shipping-rates",
       "service_discovery": true
     }
   }'
@@ -332,7 +332,14 @@ Once deployed, test with actual Shopify checkout using Nashville ZIP codes like:
 
 ## 🎯 Current Status
 
-For detailed project status and deployment readiness, see [STATUS.md](STATUS.md).
+### ✅ **Production Ready!**
+The carrier service is **fully deployed and operational** on Vercel.
+
+**📋 For detailed status and next steps, see [TODO.md](TODO.md)**
+
+**🚀 Production Endpoints:**
+- **Carrier Service**: `https://enzy-delivery-carrier-service.vercel.app/api/shipping-rates`
+- **Health Check**: `https://enzy-delivery-carrier-service.vercel.app/health`
 
 ---
 

@@ -11,7 +11,8 @@
       "Bash(npm update:*)",
       "Bash(npm audit fix:*)",
       "Bash(npm install:*)",
-      "Bash(npm audit:*)"
+      "Bash(npm audit:*)",
+      "Bash(ngrok:*)"
     ],
     "deny": [],
     "ask": []

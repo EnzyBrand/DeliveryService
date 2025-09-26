@@ -9,7 +9,7 @@
     "test:carrier": "node test-carrier-service.js",
     "start": "node web/index.js",
     "start:dev": "node dev-carrier-server.js",
-    "dev": "vercel dev",
+    "vercel:dev": "vercel dev",
     "dev:local": "node web/index.js",
     "verify": "echo 'Serverless functions - no build step needed, ready for deployment'",
     "deploy": "vercel --prod"
