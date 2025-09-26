@@ -1,0 +1,32 @@
+{
+  "name": "enzy-delivery-app",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "web/index.js",
+  "license": "UNLICENSED",
+  "scripts": {
+    "shopify": "shopify",
+    "build": "shopify app build",
+    "dev": "shopify app dev",
+    "info": "shopify app info",
+    "generate": "shopify app generate",
+    "deploy": "shopify app deploy",
+    "test": "node test-local.js",
+    "test:carrier": "node test-carrier-service.js",
+    "start:standalone": "node standalone-carrier-server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "@shopify/shopify-api": "^11.0.0",
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.1",
+    "winston": "^3.11.0"
+  },
+  "author": "trist",
+  "private": true,
+  "workspaces": [
+    "extensions/*",
+    "web",
+    "web/frontend"
+  ]
+}
