@@ -44,6 +44,9 @@ SHOPIFY_API_KEY=your_api_key npm run build
 # Test carrier service components only
 npm run test:carrier
 
+# General test runner (if available)
+npm run test
+
 # Component tests cover geocoding, zone validation, error handling
 ```
 
@@ -100,6 +103,11 @@ npm run start:standalone
 - `web/helpers/geocoding.js` - Nashville ZIP → coordinates
 - `web/helpers/zone-validator.js` - Distance-based zone validation
 
+### Main Application
+- `web/index.js` - Express server setup with critical endpoint ordering
+- `web/shopify.js` - Shopify app configuration and authentication
+- `web/frontend/` - React frontend (standard Shopify CLI template)
+
 ### Testing & Development
 - `test-carrier-service.js` - Component tests for carrier logic
 - `standalone-carrier-server.js` - OAuth-free development server
@@ -107,6 +115,7 @@ npm run start:standalone
 ### Configuration
 - `shopify.app.toml` - Includes `read_shipping,write_shipping` scopes
 - `.env` - API keys, automatically managed APP_URL for Shopify CLI
+- `package.json` - Dependencies include express, @shopify/shopify-api, axios, winston
 
 ## Shopify Integration Notes
 
@@ -124,3 +133,14 @@ Must return Shopify-compatible rate objects with required fields:
 - Development: Uses memory session storage, automatic tunnel URLs
 - Production: Will need persistent session storage, stable URLs
 - Carrier service logic identical between environments
+
+## Health and Debug Endpoints
+
+### Available Endpoints
+- `GET /health` - Health check endpoint (no auth required)
+- `GET /api/list-carriers/:shop/:token` - List registered carrier services (requires shop and access token)
+
+### Debugging Tips
+- Use standalone server (`npm run start:standalone`) to isolate carrier service logic
+- Health endpoint useful for tunnel verification: `curl https://your-tunnel-url/health`
+- Check `/test` endpoint on standalone server for quick functionality verification

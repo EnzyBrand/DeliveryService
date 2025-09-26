@@ -6,9 +6,11 @@
       "Bash(npm run:*)",
       "Bash(shopify app dev:*)",
       "Bash(node:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Read(//c/Repos/Shopify_Delivery/delivery-compost/**)"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "outputStyle": "Explanatory"
 }
