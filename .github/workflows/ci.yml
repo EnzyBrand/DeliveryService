@@ -1,0 +1,107 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Test & Validate
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run carrier service tests
+      run: npm run test:carrier
+
+    - name: Verify build readiness
+      run: npm run verify
+
+    - name: Check for security vulnerabilities
+      run: npm audit --audit-level=moderate
+
+    - name: Validate package.json
+      run: npm ls --depth=0
+
+    - name: Test health endpoint structure
+      run: |
+        if [ -f "api/health.js" ]; then
+          echo "✓ Health endpoint found"
+        else
+          echo "⚠️  Health endpoint not found at api/health.js"
+          exit 1
+        fi
+
+    - name: Validate shipping rates endpoint
+      run: |
+        if [ -f "api/shipping-rates.js" ]; then
+          echo "✓ Shipping rates endpoint found"
+        else
+          echo "⚠️  Critical: shipping-rates.js endpoint missing"
+          exit 1
+        fi
+
+  deployment-check:
+    name: Deployment Validation
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Validate Vercel configuration
+      run: |
+        if [ -f "vercel.json" ]; then
+          echo "✓ Vercel configuration found"
+          cat vercel.json
+        else
+          echo "⚠️  vercel.json not found"
+          exit 1
+        fi
+
+    - name: Check for required environment variables
+      run: |
+        echo "Checking for .env.example or environment documentation..."
+        if [ -f ".env.example" ]; then
+          echo "✓ Environment example found"
+        else
+          echo "ℹ️  Consider adding .env.example for documentation"
+        fi
+
+    - name: Simulate Vercel build check
+      run: |
+        echo "Validating serverless function structure..."
+        if [ -d "api" ] && [ "$(ls -A api)" ]; then
+          echo "✓ API directory contains serverless functions"
+          ls -la api/
+        else
+          echo "⚠️  No serverless functions found in api/ directory"
+          exit 1
+        fi
