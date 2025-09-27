@@ -4,15 +4,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Shopify app that implements a Nashville-area carrier service offering conditional "Free Shipping with Nashville Compost" during checkout. The app is built on the official Shopify CLI Node.js template with significant carrier service extensions.
+This is a **headless commerce** Nashville carrier service for Shopify that offers conditional "Free Shipping with Nashville Compost" during checkout. The project is optimized for serverless deployment on Vercel and is **production ready**.
 
-**Critical Reference**: See `README-CARRIER-SERVICE.md` for comprehensive implementation details, current status, and architectural decisions.
+**Critical References**:
+- See `README.md` for comprehensive documentation
+- See `TODO.md` for current status and Shopify test integration steps
 
 ## Core Architecture
 
-### Dual Server Architecture
-- **Full Shopify App**: `shopify app dev` - includes OAuth, frontend, and carrier service
-- **Standalone Carrier Service**: `npm run start:standalone` - carrier service only, no OAuth dependency
+### Headless Commerce Serverless Architecture
+- **Production**: Vercel serverless functions (`/api/shipping-rates.js`, `/api/health.js`)
+- **Development**: Express.js server (`web/index.js`) and enhanced dev server (`dev-carrier-server.js`)
+- **No OAuth complexity**: Direct Shopify API integration using Private Apps
 
 ### Carrier Service Flow
 1. Shopify calls `POST /api/shipping-rates` during checkout
@@ -20,50 +23,53 @@ This is a Shopify app that implements a Nashville-area carrier service offering 
 3. Zone validation via distance calculation (`web/helpers/zone-validator.js`)
 4. Conditional shipping rates returned based on Nashville area detection (30km radius)
 
-### Critical Endpoint Placement
-Carrier service endpoints are placed **before** authentication middleware in `web/index.js`:
-```javascript
-// Carrier service endpoints (no auth) - Shopify calls these directly
-app.post('/api/shipping-rates', handleShippingRates);
-app.post('/api/register-carrier', registerCarrierService);
-
-// Authentication middleware applied after carrier service endpoints
-app.use("/api/*", shopify.validateAuthenticatedSession());
-```
+### Production Endpoints (Live)
+- **Carrier Service**: `https://enzy-delivery-carrier-service.vercel.app/api/shipping-rates`
+- **Health Check**: `https://enzy-delivery-carrier-service.vercel.app/health`
 
 ## Development Commands
-
-### Building
-```bash
-# Build requires API key in environment
-SHOPIFY_API_KEY=your_api_key npm run build
-```
 
 ### Testing
 ```bash
 # Test carrier service components only
 npm run test:carrier
 
-# General test runner (if available)
-npm run test
-
 # Component tests cover geocoding, zone validation, error handling
 ```
 
 ### Development Servers
 ```bash
-# Full Shopify app (includes OAuth, frontend)
-shopify app dev
-# Note: Currently has OAuth session loop issue
+# Option 1: Express.js server (recommended for development)
+npm start                    # Starts on http://localhost:3000
 
-# Standalone carrier service (bypasses OAuth)
-npm run start:standalone
-# Then use ngrok: ngrok http 3000
+# Option 2: Development server with enhanced testing
+npm run start:dev            # Starts on http://localhost:3000
+# - Includes /test endpoint with sample Nashville/non-Nashville requests
+
+# Option 3: Vercel dev server (tests production environment locally)
+npm run vercel:dev           # Starts on http://localhost:3000
+# - Mimics production Vercel environment exactly
 ```
 
-### Tunnel Services
-- **Cloudflare tunnels**: Auto-managed by `shopify app dev`, updates `shopify.app.toml`
-- **ngrok**: Manual tunneling for standalone testing: `ngrok http 3000`
+### Deployment
+```bash
+# Deploy to Vercel production
+npm run deploy               # or: vercel --prod
+
+# Verify deployment
+npm run verify
+```
+
+### Local Testing with ngrok
+```bash
+# Start development server
+npm run start:dev
+
+# In another terminal, expose via ngrok
+ngrok http 3000
+
+# Use ngrok URL for testing Shopify integration
+```
 
 ## Key Implementation Details
 
@@ -82,65 +88,102 @@ npm run start:standalone
 - Graceful degradation for any geocoding or validation errors
 - No external API dependencies that could cause timeouts
 
-## Current Status (Reference README-CARRIER-SERVICE.md)
+## Current Status - PRODUCTION READY!
 
-### Working
-- Carrier service logic fully implemented and tested
-- Standalone server works with ngrok
-- Build process functional
-- Local geocoding and zone validation
+### ✅ Working
+- **Production deployment**: Fully deployed on Vercel and operational
+- **Carrier service logic**: All Nashville geocoding and zone validation working
+- **API endpoints**: Both `/api/shipping-rates` and `/health` responding correctly
+- **External access**: Publicly accessible without bypass tokens (ideal for carrier services)
+- **Component tests**: All carrier service logic tests pass
+- **Local development**: All server startup options functional
 
-### Known Issues
-- **Shopify OAuth loop**: `shopify app dev` has session validation failures
-- App preview loads but shows authentication redirect loop
-- Carrier service functionality is unaffected by OAuth issue
+### 🧪 Next Steps
+- **Shopify test integration**: Awaiting partner setup of development store and private app
+- **End-to-end testing**: Test actual checkout flow with Nashville addresses
 
 ## File Structure Context
 
-### Carrier Service Core
-- `web/api/shipping-rates.js` - Main Shopify callback endpoint
-- `web/api/carrier-service.js` - Shopify registration management
-- `web/helpers/geocoding.js` - Nashville ZIP → coordinates
-- `web/helpers/zone-validator.js` - Distance-based zone validation
+### Production (Vercel Serverless)
+```
+/api/
+  ├── shipping-rates.js    ← Main production endpoint (Shopify calls this)
+  └── health.js           ← Health check endpoint
+```
 
-### Main Application
-- `web/index.js` - Express server setup with critical endpoint ordering
-- `web/shopify.js` - Shopify app configuration and authentication
-- `web/frontend/` - React frontend (standard Shopify CLI template)
+### Development (Express.js)
+```
+/web/
+  ├── index.js            ← Express server for local development
+  └── api/
+      ├── shipping-rates.js ← Same logic as /api/shipping-rates.js
+      └── carrier-service.js ← Shopify registration helpers
+```
+
+### Shared Code
+```
+/web/helpers/
+  ├── geocoding.js        ← Nashville ZIP → coordinates
+  └── zone-validator.js   ← Distance-based zone validation
+```
 
 ### Testing & Development
 - `test-carrier-service.js` - Component tests for carrier logic
-- `standalone-carrier-server.js` - OAuth-free development server
+- `dev-carrier-server.js` - Development server with enhanced testing
 
 ### Configuration
-- `shopify.app.toml` - Includes `read_shipping,write_shipping` scopes
-- `.env` - API keys, automatically managed APP_URL for Shopify CLI
-- `package.json` - Dependencies include express, @shopify/shopify-api, axios, winston
+- `vercel.json` - Modern minimal Vercel configuration
+- `package.json` - ES modules, Express.js, axios dependencies
+- `TODO.md` - Current status and Shopify integration guide
 
 ## Shopify Integration Notes
 
-### CarrierService Registration
-- Use `/api/register-carrier` endpoint once OAuth issues resolved
-- Tells Shopify to call `/api/shipping-rates` during checkout
-- Service name: "Nashville Compost Delivery"
+### Private App Setup Required
+1. **Create Shopify Private App** with scopes: `read_shipping`, `write_shipping`
+2. **Register Carrier Service** using curl command:
+```bash
+curl -X POST "https://your-shop.myshopify.com/admin/api/2023-07/carrier_services.json" \
+  -H "X-Shopify-Access-Token: YOUR_PRIVATE_APP_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "carrier_service": {
+      "name": "Nashville Compost Delivery",
+      "callback_url": "https://enzy-delivery-carrier-service.vercel.app/api/shipping-rates",
+      "service_discovery": true
+    }
+  }'
+```
 
 ### Rate Response Format
-Must return Shopify-compatible rate objects with required fields:
-- `service_name`, `service_code`, `total_price` (cents as string)
-- `currency`, `min_delivery_date`, `max_delivery_date`
+Returns Shopify-compatible rate objects:
+- Nashville area: Free compost shipping + standard shipping
+- Non-Nashville: Standard shipping only
+- Always includes fallback to prevent checkout failures
 
-### Development vs Production
-- Development: Uses memory session storage, automatic tunnel URLs
-- Production: Will need persistent session storage, stable URLs
-- Carrier service logic identical between environments
+### Testing Commands
+See `TODO.md` for comprehensive command line testing examples including:
+- Health check validation
+- Nashville ZIP testing (37201) - should get free compost option
+- Non-Nashville ZIP testing (90210) - should get only standard shipping
 
-## Health and Debug Endpoints
+## Debugging & Health Endpoints
 
-### Available Endpoints
-- `GET /health` - Health check endpoint (no auth required)
-- `GET /api/list-carriers/:shop/:token` - List registered carrier services (requires shop and access token)
+### Production Endpoints
+- `GET /health` - Health check (publicly accessible)
+- `POST /api/shipping-rates` - Main carrier service endpoint
 
-### Debugging Tips
-- Use standalone server (`npm run start:standalone`) to isolate carrier service logic
-- Health endpoint useful for tunnel verification: `curl https://your-tunnel-url/health`
-- Check `/test` endpoint on standalone server for quick functionality verification
+### Development Testing
+- Use `npm run start:dev` for local testing
+- Check `/test` endpoint for quick Nashville vs non-Nashville validation
+- Use ngrok for testing Shopify integration: `ngrok http 3000`
+
+### Command Line Testing
+```bash
+# Test health
+curl -s "https://enzy-delivery-carrier-service.vercel.app/health"
+
+# Test Nashville address (should get free compost)
+curl -X POST "https://enzy-delivery-carrier-service.vercel.app/api/shipping-rates" \
+  -H "Content-Type: application/json" \
+  -d '{"rate":{"destination":{"postal_code":"37201"}}}'
+```
