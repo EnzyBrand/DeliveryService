@@ -284,6 +284,32 @@ curl -X POST "https://your-shop.myshopify.com/admin/api/2023-07/carrier_services
   }'
 ```
 
+### **Postman Collection (Recommended):**
+A comprehensive Postman collection is included for easy API testing:
+
+```bash
+# Import the collection file into Postman
+# File: postman-collection.json (project root)
+```
+
+**Features included:**
+- ⚡ **Environment variables** for production and local URLs
+- 🏥 **Health check endpoints** for both environments
+- 📦 **Shipping rate tests** with realistic Shopify payloads
+- 🧪 **Edge case testing** for error handling and validation
+- 🌍 **Nashville vs non-Nashville** address comparisons
+
+**To use:**
+1. **Open Postman** → Click "Import"
+2. **Upload** `postman-collection.json` from project root
+3. **Select environment**: Switch between "Production" and "Local" URLs
+4. **Run tests**: Start with health checks, then try Nashville ZIP (37201) vs non-Nashville ZIP (90210)
+
+**Quick Test Sequence:**
+- `GET /health` - Verify service is running
+- `POST /api/shipping-rates` with 37201 ZIP - Should return 2 shipping options (free compost + standard)
+- `POST /api/shipping-rates` with 90210 ZIP - Should return 1 shipping option (standard only)
+
 ### **Production Testing:**
 Once deployed, test with actual Shopify checkout using Nashville ZIP codes like:
 - 37201 (Downtown Nashville) - should show free compost option

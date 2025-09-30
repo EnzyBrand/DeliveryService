@@ -1,0 +1,278 @@
+{
+  "info": {
+    "name": "Nashville Carrier Service",
+    "description": "Postman collection for testing the Nashville Compost Delivery carrier service endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "production_url",
+      "value": "https://enzy-delivery-carrier-service.vercel.app",
+      "type": "string"
+    },
+    {
+      "key": "local_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Checks",
+      "item": [
+        {
+          "name": "Production Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{production_url}}/health",
+              "host": ["{{production_url}}"],
+              "path": ["health"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Local Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{local_url}}/health",
+              "host": ["{{local_url}}"],
+              "path": ["health"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Shipping Rates - Production",
+      "item": [
+        {
+          "name": "Nashville Address (37201) - Should Get Free Compost",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rate\": {\n    \"destination\": {\n      \"postal_code\": \"37201\",\n      \"city\": \"Nashville\",\n      \"province\": \"TN\",\n      \"country\": \"US\",\n      \"address1\": \"123 Main St\"\n    },\n    \"items\": [\n      {\n        \"name\": \"Test Product\",\n        \"sku\": \"TEST-SKU\",\n        \"quantity\": 1,\n        \"grams\": 500,\n        \"price\": 2000,\n        \"vendor\": \"Test Vendor\",\n        \"requires_shipping\": true,\n        \"taxable\": true,\n        \"fulfillment_service\": \"manual\"\n      }\n    ]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{production_url}}/api/shipping-rates",
+              "host": ["{{production_url}}"],
+              "path": ["api", "shipping-rates"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Non-Nashville Address (90210) - Standard Only",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rate\": {\n    \"destination\": {\n      \"postal_code\": \"90210\",\n      \"city\": \"Beverly Hills\",\n      \"province\": \"CA\",\n      \"country\": \"US\",\n      \"address1\": \"123 Rodeo Dr\"\n    },\n    \"items\": [\n      {\n        \"name\": \"Test Product\",\n        \"sku\": \"TEST-SKU\",\n        \"quantity\": 1,\n        \"grams\": 500,\n        \"price\": 2000,\n        \"vendor\": \"Test Vendor\",\n        \"requires_shipping\": true,\n        \"taxable\": true,\n        \"fulfillment_service\": \"manual\"\n      }\n    ]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{production_url}}/api/shipping-rates",
+              "host": ["{{production_url}}"],
+              "path": ["api", "shipping-rates"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Nashville Suburb (37211 - Green Hills)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rate\": {\n    \"destination\": {\n      \"postal_code\": \"37211\",\n      \"city\": \"Nashville\",\n      \"province\": \"TN\",\n      \"country\": \"US\",\n      \"address1\": \"4000 Hillsboro Pike\"\n    },\n    \"items\": [\n      {\n        \"name\": \"Test Product\",\n        \"sku\": \"TEST-SKU\",\n        \"quantity\": 1,\n        \"grams\": 500,\n        \"price\": 2000,\n        \"vendor\": \"Test Vendor\",\n        \"requires_shipping\": true,\n        \"taxable\": true,\n        \"fulfillment_service\": \"manual\"\n      }\n    ]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{production_url}}/api/shipping-rates",
+              "host": ["{{production_url}}"],
+              "path": ["api", "shipping-rates"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Invalid Request (Missing Data)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invalid\": \"request\"\n}"
+            },
+            "url": {
+              "raw": "{{production_url}}/api/shipping-rates",
+              "host": ["{{production_url}}"],
+              "path": ["api", "shipping-rates"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Shipping Rates - Local Development",
+      "item": [
+        {
+          "name": "Nashville Address (37201) - Local",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rate\": {\n    \"destination\": {\n      \"postal_code\": \"37201\",\n      \"city\": \"Nashville\",\n      \"province\": \"TN\",\n      \"country\": \"US\",\n      \"address1\": \"123 Main St\"\n    },\n    \"items\": [\n      {\n        \"name\": \"Test Product\",\n        \"sku\": \"TEST-SKU\",\n        \"quantity\": 1,\n        \"grams\": 500,\n        \"price\": 2000,\n        \"vendor\": \"Test Vendor\",\n        \"requires_shipping\": true,\n        \"taxable\": true,\n        \"fulfillment_service\": \"manual\"\n      }\n    ]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{local_url}}/api/shipping-rates",
+              "host": ["{{local_url}}"],
+              "path": ["api", "shipping-rates"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Non-Nashville Address (90210) - Local",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rate\": {\n    \"destination\": {\n      \"postal_code\": \"90210\",\n      \"city\": \"Beverly Hills\",\n      \"province\": \"CA\",\n      \"country\": \"US\",\n      \"address1\": \"123 Rodeo Dr\"\n    },\n    \"items\": [\n      {\n        \"name\": \"Test Product\",\n        \"sku\": \"TEST-SKU\",\n        \"quantity\": 1,\n        \"grams\": 500,\n        \"price\": 2000,\n        \"vendor\": \"Test Vendor\",\n        \"requires_shipping\": true,\n        \"taxable\": true,\n        \"fulfillment_service\": \"manual\"\n      }\n    ]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{local_url}}/api/shipping-rates",
+              "host": ["{{local_url}}"],
+              "path": ["api", "shipping-rates"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Local Test Endpoint (Dev Server)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{local_url}}/test",
+              "host": ["{{local_url}}"],
+              "path": ["test"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Edge Cases & Error Testing",
+      "item": [
+        {
+          "name": "Empty Postal Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rate\": {\n    \"destination\": {\n      \"postal_code\": \"\",\n      \"city\": \"Nashville\",\n      \"province\": \"TN\",\n      \"country\": \"US\",\n      \"address1\": \"123 Main St\"\n    },\n    \"items\": []\n  }\n}"
+            },
+            "url": {
+              "raw": "{{production_url}}/api/shipping-rates",
+              "host": ["{{production_url}}"],
+              "path": ["api", "shipping-rates"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "International Address (Should Get Standard)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rate\": {\n    \"destination\": {\n      \"postal_code\": \"M5V 3A8\",\n      \"city\": \"Toronto\",\n      \"province\": \"ON\",\n      \"country\": \"CA\",\n      \"address1\": \"123 Queen St\"\n    },\n    \"items\": [\n      {\n        \"name\": \"Test Product\",\n        \"sku\": \"TEST-SKU\",\n        \"quantity\": 1,\n        \"grams\": 500,\n        \"price\": 2000\n      }\n    ]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{production_url}}/api/shipping-rates",
+              "host": ["{{production_url}}"],
+              "path": ["api", "shipping-rates"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "OPTIONS Request (CORS Preflight)",
+          "request": {
+            "method": "OPTIONS",
+            "header": [
+              {
+                "key": "Access-Control-Request-Method",
+                "value": "POST"
+              },
+              {
+                "key": "Access-Control-Request-Headers",
+                "value": "Content-Type"
+              }
+            ],
+            "url": {
+              "raw": "{{production_url}}/api/shipping-rates",
+              "host": ["{{production_url}}"],
+              "path": ["api", "shipping-rates"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
