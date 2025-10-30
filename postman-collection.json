@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "Nashville Carrier Service",
-    "description": "Postman collection for testing the Nashville Compost Delivery carrier service endpoints",
+    "name": "Enzy Delivery Carrier Service",
+    "description": "Postman collection for testing the Carbon Negative Local Delivery carrier service endpoints. Uses Google Maps Geocoding API and StopSuite zone validation.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -52,7 +52,7 @@
       "name": "Shipping Rates - Production",
       "item": [
         {
-          "name": "Nashville Address (37201) - Should Get Free Compost",
+          "name": "Nashville Address (37201) - Should Get Carbon Negative Delivery",
           "request": {
             "method": "POST",
             "header": [
@@ -74,7 +74,7 @@
           "response": []
         },
         {
-          "name": "Non-Nashville Address (90210) - Standard Only",
+          "name": "Non-Nashville Address (90210) - Empty Array (Shopify Defaults)",
           "request": {
             "method": "POST",
             "header": [
@@ -96,7 +96,7 @@
           "response": []
         },
         {
-          "name": "Nashville Suburb (37211 - Green Hills)",
+          "name": "Nashville Suburb (37211 - Green Hills) - Test StopSuite Zone",
           "request": {
             "method": "POST",
             "header": [
@@ -229,7 +229,7 @@
           "response": []
         },
         {
-          "name": "International Address (Should Get Standard)",
+          "name": "International Address (Should Return Empty Array)",
           "request": {
             "method": "POST",
             "header": [

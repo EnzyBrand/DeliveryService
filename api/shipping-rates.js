@@ -1,117 +1,95 @@
-import { validateDeliveryZone } from '../web/helpers/zone-validator.js';
-import { geocodeAddress } from '../web/helpers/geocoding.js';
+import { validateDeliveryZone } from './zone-validator.js';
+import { geocodeAddress } from '../lib/geocode.js';
 
 /**
- * Vercel serverless function for Shopify carrier service
- * Called by Shopify during checkout to get shipping rates
+ * Shopify CarrierService endpoint
+ * Determines if address is in StopSuite local delivery zone
+ * and returns Carbon Negative Local Delivery rate if matched.
+ * Otherwise, defers to Shopify’s default $4.99 rate.
  */
 export default async function handler(req, res) {
-  // Enable CORS for Shopify
+  // --- CORS setup ---
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const requestId = Date.now().toString();
-  console.log(`[${requestId}] Shipping rate request received`);
+  console.log(`\n[${requestId}] 📨 Shipping rate request received`);
   console.log('Request body:', JSON.stringify(req.body, null, 2));
 
   try {
     const { rate } = req.body;
-
-    // Validate request
     if (!rate || !rate.destination) {
-      console.log(`[${requestId}] Invalid request format`);
-      return res.json({ rates: getDefaultRates() });
+      console.log(`[${requestId}] ⚠️ Invalid request format — no destination`);
+      return res.json({ rates: [] }); // Shopify shows default rates
     }
 
-    const { destination, items } = rate;
-
-    // Build address object
+    const { destination } = rate;
     const address = {
       street: `${destination.address1 || ''} ${destination.address2 || ''}`.trim(),
       city: destination.city,
       state: destination.province,
-      zip: destination.postal_code,
-      country: destination.country
+      zip: destination.postal_code || destination.zip,
+      country: destination.country,
     };
 
-    console.log(`[${requestId}] Processing address:`, address);
+    console.log(`[${requestId}] 📍 Processing address:`, address);
+    const fullAddress = `${address.street}, ${address.city}, ${address.state} ${address.zip}, ${address.country}`;
+    console.log(`[${requestId}] 🗺️ Geocoding started for: ${fullAddress}`);
 
-    // Step 1: Try to geocode the address
-    const coordinates = await geocodeAddress(address);
-
+    const coordinates = await geocodeAddress(fullAddress);
     if (!coordinates) {
-      console.log(`[${requestId}] Could not geocode address, returning default rates`);
-      return res.json({ rates: getDefaultRates() });
+      console.log(`[${requestId}] ⚠️ Could not geocode address — falling back to Shopify defaults`);
+      return res.json({ rates: [] }); // Shopify default
     }
 
-    console.log(`[${requestId}] Coordinates found:`, coordinates);
+    console.log(`[${requestId}] ✅ Coordinates found:`, coordinates);
 
-    // Step 2: Check if coordinates are in Nashville delivery zone
-    const isInDeliveryZone = await validateDeliveryZone(
-      coordinates.lat,
-      coordinates.lng
-    );
+    const zoneResult = await validateDeliveryZone(coordinates.lat, coordinates.lng);
 
-    console.log(`[${requestId}] In delivery zone:`, isInDeliveryZone);
+    // ✅ Inside StopSuite zone
+    if (zoneResult?.inside) {
+      console.log(`[${requestId}] ✅ Address is INSIDE StopSuite zone (${zoneResult.zoneName || 'Unnamed Zone'})`);
+      console.log(`[${requestId}] Returning ONLY Carbon Negative Local Delivery rate\n`);
 
-    // Step 3: Build response rates
-    const rates = [];
+      // 🚫 Prevent Shopify from merging default rates
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('X-Shopify-Carrier-Exclusive', 'true');
 
-    if (isInDeliveryZone) {
-      // Add free Nashville compost option
-      rates.push({
-        service_name: "Free Shipping with Nashville Compost",
-        service_code: "NASH_COMPOST_FREE",
-        total_price: "0",  // Free shipping (price in cents as string)
-        description: "Eco-friendly delivery with composting service",
-        currency: "USD",
-        min_delivery_date: getDeliveryDate(2),
-        max_delivery_date: getDeliveryDate(5)
+      return res.json({
+        rates: [
+          {
+            service_name: "Carbon Negative Local Delivery",
+            service_code: "CARBON_NEGATIVE_LOCAL",
+            total_price: "499", // $4.99 (Shopify uses cents)
+            currency: "USD",
+            min_delivery_date: getDeliveryDate(1),
+            max_delivery_date: getDeliveryDate(2),
+          },
+        ],
       });
     }
 
-    // Always include standard shipping
-    rates.push(...getDefaultRates());
-
-    console.log(`[${requestId}] Returning ${rates.length} rates`);
-    res.json({ rates });
+    // 🚫 Outside StopSuite polygon — Shopify will show built-in $4.99 default
+    console.log(`[${requestId}] 🚫 Outside StopSuite zones — deferring to Shopify’s default $4.99 rate`);
+    return res.json({ rates: [] });
 
   } catch (error) {
-    console.error(`[${requestId}] Error processing shipping rates:`, error.message);
-    // On any error, return standard shipping to avoid checkout failure
-    res.json({ rates: getDefaultRates() });
+    console.error(`[${requestId}] ❌ Error processing shipping rates:`, error.message);
+    // Fallback to Shopify’s native shipping rate if something breaks
+    return res.json({ rates: [] });
   }
 }
 
 /**
- * Default shipping rates always available
- */
-function getDefaultRates() {
-  return [{
-    service_name: "Standard Shipping",
-    service_code: "STANDARD",
-    total_price: "999",  // $9.99 in cents
-    description: "Standard delivery",
-    currency: "USD",
-    min_delivery_date: getDeliveryDate(5),
-    max_delivery_date: getDeliveryDate(7)
-  }];
-}
-
-/**
- * Calculate delivery date
+ * Helper: Calculate delivery date offset
  */
 function getDeliveryDate(daysFromNow) {
   const date = new Date();
   date.setDate(date.getDate() + daysFromNow);
   return date.toISOString().split('T')[0];
 }
+

@@ -2,17 +2,16 @@
   "permissions": {
     "allow": [
       "Bash(npm run build:*)",
-      "Bash(timeout 10 npm start)",
       "Bash(npm run:*)",
       "Bash(shopify app dev:*)",
       "Bash(node:*)",
       "Bash(curl:*)",
-      "Read(//c/Repos/Shopify_Delivery/delivery-compost/**)",
       "Bash(npm update:*)",
       "Bash(npm audit fix:*)",
       "Bash(npm install:*)",
       "Bash(npm audit:*)",
-      "Bash(ngrok:*)"
+      "Bash(ngrok:*)",
+      "Bash(test:*)"
     ],
     "deny": [],
     "ask": []

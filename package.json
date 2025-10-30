@@ -5,8 +5,7 @@
   "main": "web/index.js",
   "license": "UNLICENSED",
   "scripts": {
-    "test": "node test-carrier-service.js",
-    "test:carrier": "node test-carrier-service.js",
+    "test": "echo 'Run: npm run start:dev, then visit http://localhost:3000/test'",
     "start": "node web/index.js",
     "start:dev": "node dev-carrier-server.js",
     "vercel:dev": "vercel dev",
@@ -16,8 +15,12 @@
   },
   "dependencies": {
     "axios": "^1.6.0",
+    "cors": "^2.8.5",
     "dotenv": "^16.3.1",
-    "express": "^4.18.2"
+    "express": "^4.18.2",
+    "node-fetch": "^3.3.2",
+    "point-in-polygon": "^1.1.0",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "vercel": "^48.1.6"

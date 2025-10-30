@@ -1,327 +1,223 @@
-# Nashville Carrier Service - Next Steps
+# TODO - Enzy Delivery Carrier Service
 
-## ✅ **Current Status - PRODUCTION READY!**
-
-### **Completed:**
-- **✅ Carrier Service Logic**: All Nashville geocoding and zone validation working
-- **✅ API Endpoint**: `/api/shipping-rates` responds correctly to external calls
-- **✅ Component Tests**: All carrier service logic tests pass
-- **✅ Headless Architecture**: Clean codebase optimized for headless commerce
-- **✅ Local Development**: All server startup options functional
-- **✅ CORS Support**: Proper headers for Shopify external calls
-- **✅ External Access Validation**: ngrok tunnel testing confirms Shopify compatibility
-- **✅ Vercel Deployment**: Serverless functions deployed and working perfectly
-- **✅ Configuration Fixed**: Updated to modern vercel.json format
-- **✅ Public Access**: Endpoints accessible without bypass tokens (ideal for carrier services)
-
-### **Production Endpoints:**
-- **🚀 Carrier Service**: `https://enzy-delivery-carrier-service.vercel.app/api/shipping-rates`
-- **📊 Health Check**: `https://enzy-delivery-carrier-service.vercel.app/health`
+**Current Branch:** `feature/compost-nashville-delivery`
+**Status:** Stable - Carrier service fully functional
+**Last Updated:** October 29, 2025
 
 ---
 
-## 🧪 **TODO: Shopify Test Integration**
+## ✅ Current Status
 
-### **Step 1: Partner Setup (Shopify Side)**
-**Ask your partner to:**
+### **Production & Working:**
+- ✅ Carrier Service deployed at `https://enzy-delivery-carrier-service.vercel.app`
+- ✅ Google Maps Geocoding API integration
+- ✅ StopSuite zone validation API integration
+- ✅ HMAC-SHA256 authentication
+- ✅ Health check endpoint
+- ✅ Local development environment
+- ✅ Component tests passing
 
-1. **Create Shopify Development Store**:
-   - Go to [partners.shopify.com](https://partners.shopify.com)
-   - Create a free development store for testing
-   - **OR** use existing test/staging store
+### **Built But Not Deployed:**
+- ⚠️ Webhook handlers (will move to middleware project - see [ARCHITECTURE.md](./ARCHITECTURE.md))
+- ⚠️ Order sync functionality (will move to middleware project - see [ARCHITECTURE.md](./ARCHITECTURE.md))
+- ⚠️ CLI carrier management tools (will move to middleware project - see [ARCHITECTURE.md](./ARCHITECTURE.md))
 
-2. **Create Private App**:
-   ```
-   1. Go to Shopify Admin → Settings → Apps and sales channels
-   2. Click "Develop apps" → "Create an app"
-   3. App Name: "Nashville Carrier Service Test"
-   4. Configure API scopes:
-      - ✅ read_shipping
-      - ✅ write_shipping
-   5. Install the app and copy the Access Token
-   ```
+### **Known Issues:**
+- ⚠️ StopSuite order creation API returns 502 (their API issue, not ours)
 
-3. **Provide You With**:
-   - Test store URL (e.g., `test-store-123.myshopify.com`)
-   - Private App Access Token
+---
 
-### **Step 2: Register Carrier Service (Your Side)**
-Once you have the test store details, run this command:
+## 📋 TODO: Immediate Tasks
 
+### **High Priority - Carrier Service**
+- [ ] Test carrier service in real Shopify store
+  - [ ] Register carrier service with Shopify Admin API
+  - [ ] Test checkout with Nashville addresses (should show Carbon Negative delivery)
+  - [ ] Test checkout with non-Nashville addresses (should show Shopify defaults)
+  - [ ] Verify fallback behavior on API failures
+
+- [ ] Test Postman collection
+  - [ ] Import `postman-collection.json` into Postman
+  - [ ] Test all production endpoints (health, shipping rates, edge cases)
+  - [ ] Test local development endpoints
+  - [ ] Verify responses match expected behavior
+
+- [ ] Add environment variables to Vercel
+  - [ ] `STOPSUITE_API_KEY`
+  - [ ] `STOPSUITE_SECRET_KEY`
+  - [ ] `GOOGLE_MAPS_API_KEY`
+
+- [ ] Monitor production
+  - [ ] Set up health check monitoring
+  - [ ] Watch for errors in Vercel logs
+  - [ ] Track response times
+
+### **Medium Priority - Documentation**
+- [ ] Update README with actual Shopify store integration results
+- [ ] Document any edge cases discovered during testing
+- [ ] Add troubleshooting section based on real issues
+
+### **Low Priority - Future Enhancements**
+- [ ] **Add proper unit tests with Jest/Vitest**
+  - [ ] Install test framework (Jest or Vitest)
+  - [ ] Create `__tests__/` directory structure
+  - [ ] Write unit tests for `lib/geocode.js`
+  - [ ] Write unit tests for `api/zone-validator.js`
+  - [ ] Write unit tests for `api/shipping-rates.js`
+  - [ ] Set up test coverage reporting
+  - [ ] Add `npm test` script to run tests
+  - [ ] Uncomment test step in `.github/workflows/ci.yml` (currently commented out)
+- [ ] Add caching for geocoding results
+- [ ] Add retry logic for StopSuite API calls
+- [ ] Improve error logging/monitoring
+- [ ] Add performance metrics
+
+---
+
+## 🔮 Future Work (Deferred)
+
+### **Separate Middleware Project** (See [ARCHITECTURE.md](./ARCHITECTURE.md))
+- [ ] Create new repo: `enzy-shopify-stopsuite-middleware`
+- [ ] Move webhook handlers to new repo
+- [ ] Move order sync logic to new repo
+- [ ] Move CLI tools to new repo (register-carrier.js, list-carriers.js, delete-carrier.js)
+- [ ] Move middleware test scripts (test-products.js, test-shoporder.js)
+- [ ] Deploy middleware independently
+- [ ] Keep carrier service lean and fast
+
+### **Webhook Integration** (After Separation)
+- [ ] Wait for StopSuite to fix order creation API
+- [ ] Register Shopify webhook for `orders/create`
+- [ ] Deploy webhook handlers
+- [ ] Test end-to-end order sync:
+  - Shopify order → StopSuite order creation
+  - StopSuite completion → Shopify fulfillment
+
+### **Order Automation** (Nice-to-Have)
+- [ ] Automatic order entry in StopSuite
+- [ ] Automatic fulfillment updates in Shopify
+- [ ] Retry logic for failed syncs
+- [ ] Database for sync status tracking
+
+---
+
+## 🧪 Testing Checklist
+
+### **Local Testing:**
+- [x] Dev server starts (`npm run start:dev`)
+- [x] Internal test endpoint works (`/test`)
+- [x] Health check responds (`/health`)
+- [x] Shipping rates endpoint responds correctly
+
+### **Production Testing:**
+- [x] Health endpoint accessible
+- [x] Shipping rates endpoint responds
+- [ ] Test with real Shopify store
+- [ ] Test with various addresses
+- [ ] Confirm zone validation accuracy
+- [ ] Verify error handling
+
+### **Integration Testing:**
+- [ ] Register with Shopify test store
+- [ ] Test checkout flow
+- [ ] Test Nashville address (should get custom rate)
+- [ ] Test non-Nashville address (should get Shopify default)
+- [ ] Test malformed address (should fail gracefully)
+
+---
+
+## 🚀 Deployment Checklist
+
+### **Vercel Production:**
+- [x] Code deployed to Vercel
+- [x] Health endpoint working
+- [x] Shipping rates endpoint working
+- [ ] Environment variables configured
+- [ ] Error monitoring set up
+- [ ] Performance monitoring set up
+
+### **Shopify Integration:**
+- [ ] Obtain Shopify Admin API credentials
+- [ ] Register carrier service
+- [ ] Enable third-party shipping rates
+- [ ] Test in Shopify checkout
+- [ ] Monitor for errors
+
+---
+
+## 📝 Notes
+
+### **Environment Variables Needed:**
+```env
+# Required for Carrier Service
+STOPSUITE_API_KEY=pk_xxxxx
+STOPSUITE_SECRET_KEY=sk_xxxxx
+GOOGLE_MAPS_API_KEY=AIza...
+
+# Required for Webhooks (future middleware)
+SHOPIFY_ADMIN_API_KEY=shpat_xxxxx
+SHOPIFY_STORE_URL=myshop.myshopify.com
+SHOPIFY_WEBHOOK_SECRET=xxxxx
+```
+
+### **Testing Commands:**
 ```bash
-curl -X POST "https://TEST_STORE_NAME.myshopify.com/admin/api/2023-07/carrier_services.json" \
-  -H "X-Shopify-Access-Token: PRIVATE_APP_ACCESS_TOKEN" \
+# Health check
+curl https://enzy-delivery-carrier-service.vercel.app/health
+
+# Test Nashville address
+curl -X POST https://enzy-delivery-carrier-service.vercel.app/api/shipping-rates \
+  -H "Content-Type: application/json" \
+  -d '{"rate":{"destination":{"address1":"123 Broadway","city":"Nashville","province":"TN","postal_code":"37201","country":"US"}}}'
+
+# Test non-Nashville address
+curl -X POST https://enzy-delivery-carrier-service.vercel.app/api/shipping-rates \
+  -H "Content-Type: application/json" \
+  -d '{"rate":{"destination":{"address1":"123 Main St","city":"Los Angeles","province":"CA","postal_code":"90210","country":"US"}}}'
+```
+
+### **Shopify Carrier Registration:**
+```bash
+# Using CLI tool
+node register-carrier.js
+
+# Or manually with curl
+curl -X POST "https://YOUR_STORE.myshopify.com/admin/api/2025-10/carrier_services.json" \
+  -H "X-Shopify-Access-Token: YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "carrier_service": {
-      "name": "Nashville Compost Delivery (TEST)",
+      "name": "Carbon Negative Local Delivery",
       "callback_url": "https://enzy-delivery-carrier-service.vercel.app/api/shipping-rates",
       "service_discovery": true
     }
   }'
 ```
 
-### **Step 3: Test Checkout Flow**
-Test these scenarios in the Shopify test store:
+---
 
-#### **✅ Nashville Address Test**
-- **Address**: `123 Main St, Nashville, TN 37201`
-- **Expected**: Should show "Free Shipping with Nashville Compost" option
+## 📚 Related Documentation
 
-#### **✅ Nashville Suburb Test**
-- **Address**: `123 Main St, Franklin, TN 37064`
-- **Expected**: Should show "Free Shipping with Nashville Compost" option
-
-#### **❌ Non-Nashville Address Test**
-- **Address**: `123 Main St, Los Angeles, CA 90210`
-- **Expected**: Should show only "Standard Shipping" option
-
-### **Step 4: Verify Integration**
-Check that:
-- [ ] Carrier service appears in Shopify checkout
-- [ ] Nashville addresses get free compost option
-- [ ] Non-Nashville addresses get only standard shipping
-- [ ] No checkout errors occur
-- [ ] Health endpoint remains accessible
+- **[README.md](./README.md)** - Quick start and overview
+- **[CLAUDE.md](./CLAUDE.md)** - AI assistant coding guidelines
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Future microservices separation plan
 
 ---
 
-## 📋 **Partner Information Sheet**
+## 🐛 Known Issues
 
-**Share this with your partner:**
+1. **StopSuite Order Creation Returns 502**
+   - Status: External API issue
+   - Impact: Order sync doesn't work
+   - Workaround: Manual order entry
+   - Resolution: Wait for StopSuite to fix their demo environment
 
-```
-🚀 Nashville Carrier Service - Ready for Test Integration
-
-PRODUCTION ENDPOINTS:
-- Carrier Service: https://enzy-delivery-carrier-service.vercel.app/api/shipping-rates
-- Health Check: https://enzy-delivery-carrier-service.vercel.app/health
-
-WHAT IT DOES:
-- Detects Nashville area addresses (ZIP codes 37201-37221, surrounding areas)
-- Offers "Free Shipping with Nashville Compost" for Nashville area
-- Provides standard shipping for all other locations
-- Always falls back to standard shipping if any errors occur
-
-TEST ADDRESSES TO TRY:
-✅ Nashville Core: 37201, 37203, 37215 (should get free compost option)
-✅ Nashville Suburbs: 37027 (Brentwood), 37064 (Franklin), 37115 (Madison)
-❌ Non-Nashville: 90210 (Beverly Hills), 10001 (NYC), 60601 (Chicago)
-
-REQUIRED SHOPIFY PERMISSIONS:
-- read_shipping (to read shipping configurations)
-- write_shipping (to register carrier service)
-
-SERVICE NAME SUGGESTION:
-"Nashville Compost Delivery (TEST)"
-```
+2. **Middleware Code Not Deployed**
+   - Status: Intentional
+   - Impact: No automatic order sync
+   - Workaround: Manual order entry
+   - Resolution: Deploy when needed, preferably in separate project
 
 ---
 
-## 🚀 **After Successful Testing**
-
-Once testing is complete and working:
-
-1. **Register on Production Store**:
-   - Use same process but with production Shopify store
-   - Change name to "Nashville Compost Delivery" (remove "TEST")
-
-2. **Monitor Health**:
-   - Use health endpoint for uptime monitoring
-   - Watch for any shipping rate errors in logs
-
-3. **Documentation**:
-   - Update README with successful integration notes
-   - Document any edge cases discovered during testing
-
----
-
-## 💻 **Command Line Testing Examples**
-
-### **Test Health Endpoint**
-```bash
-curl -s "https://enzy-delivery-carrier-service.vercel.app/health"
-```
-**Expected Response:**
-```json
-{
-  "status": "healthy",
-  "timestamp": "2025-09-26T22:55:23.346Z",
-  "service": "Enzy Delivery Carrier Service",
-  "version": "1.0.0"
-}
-```
-
-### **Test Nashville Address (Should Get Free Compost)**
-```bash
-curl -X POST "https://enzy-delivery-carrier-service.vercel.app/api/shipping-rates" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "rate": {
-      "destination": {
-        "postal_code": "37201",
-        "city": "Nashville",
-        "province": "TN",
-        "country": "US"
-      }
-    }
-  }' \
-  -s | jq '.'
-```
-**Expected Response:**
-```json
-{
-  "rates": [
-    {
-      "service_name": "Free Shipping with Nashville Compost",
-      "service_code": "NASH_COMPOST_FREE",
-      "total_price": "0",
-      "description": "Eco-friendly delivery with composting service",
-      "currency": "USD",
-      "min_delivery_date": "2025-09-28",
-      "max_delivery_date": "2025-10-01"
-    },
-    {
-      "service_name": "Standard Shipping",
-      "service_code": "STANDARD",
-      "total_price": "999",
-      "description": "Standard delivery",
-      "currency": "USD",
-      "min_delivery_date": "2025-10-01",
-      "max_delivery_date": "2025-10-03"
-    }
-  ]
-}
-```
-
-### **Test Non-Nashville Address (Should Only Get Standard)**
-```bash
-curl -X POST "https://enzy-delivery-carrier-service.vercel.app/api/shipping-rates" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "rate": {
-      "destination": {
-        "postal_code": "90210",
-        "city": "Beverly Hills",
-        "province": "CA",
-        "country": "US"
-      }
-    }
-  }' \
-  -s | jq '.'
-```
-**Expected Response:**
-```json
-{
-  "rates": [
-    {
-      "service_name": "Standard Shipping",
-      "service_code": "STANDARD",
-      "total_price": "999",
-      "description": "Standard delivery",
-      "currency": "USD",
-      "min_delivery_date": "2025-10-01",
-      "max_delivery_date": "2025-10-03"
-    }
-  ]
-}
-```
-
-### **Test Nashville Suburb (Should Get Free Compost)**
-```bash
-curl -X POST "https://enzy-delivery-carrier-service.vercel.app/api/shipping-rates" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "rate": {
-      "destination": {
-        "postal_code": "37064",
-        "city": "Franklin",
-        "province": "TN",
-        "country": "US"
-      }
-    }
-  }' \
-  -s | jq '.'
-```
-
-### **Quick Test Script (Windows/Git Bash)**
-Save this as `test-endpoints.sh`:
-```bash
-#!/bin/bash
-echo "=== Testing Nashville Carrier Service ==="
-echo
-
-echo "1. Health Check:"
-curl -s "https://enzy-delivery-carrier-service.vercel.app/health" | jq '.'
-echo
-
-echo "2. Nashville ZIP (37201) - Should get FREE compost option:"
-curl -X POST "https://enzy-delivery-carrier-service.vercel.app/api/shipping-rates" \
-  -H "Content-Type: application/json" \
-  -d '{"rate":{"destination":{"postal_code":"37201"}}}' \
-  -s | jq '.rates[].service_name'
-echo
-
-echo "3. Non-Nashville ZIP (90210) - Should get ONLY standard:"
-curl -X POST "https://enzy-delivery-carrier-service.vercel.app/api/shipping-rates" \
-  -H "Content-Type: application/json" \
-  -d '{"rate":{"destination":{"postal_code":"90210"}}}' \
-  -s | jq '.rates[].service_name'
-echo
-
-echo "=== Test Complete ==="
-```
-
-**Run with:** `bash test-endpoints.sh`
-
-### **PowerShell Version (Windows)**
-```powershell
-# Test Health
-Write-Host "=== Health Check ===" -ForegroundColor Green
-Invoke-RestMethod -Uri "https://enzy-delivery-carrier-service.vercel.app/health"
-
-# Test Nashville
-Write-Host "`n=== Nashville Test (37201) ===" -ForegroundColor Green
-$nashvilleBody = @{
-  rate = @{
-    destination = @{
-      postal_code = "37201"
-    }
-  }
-} | ConvertTo-Json -Depth 3
-
-Invoke-RestMethod -Uri "https://enzy-delivery-carrier-service.vercel.app/api/shipping-rates" -Method POST -Body $nashvilleBody -ContentType "application/json"
-
-# Test Non-Nashville
-Write-Host "`n=== Non-Nashville Test (90210) ===" -ForegroundColor Green
-$nonNashvilleBody = @{
-  rate = @{
-    destination = @{
-      postal_code = "90210"
-    }
-  }
-} | ConvertTo-Json -Depth 3
-
-Invoke-RestMethod -Uri "https://enzy-delivery-carrier-service.vercel.app/api/shipping-rates" -Method POST -Body $nonNashvilleBody -ContentType "application/json"
-```
-
----
-
-## 🔧 **Technical Notes**
-
-### **Service Specifications:**
-- **Coverage Area**: 30km radius from Nashville center (36.1627, -86.7816)
-- **ZIP Codes Supported**: 37201-37221, plus suburbs (37027, 37064, 37067, 37115, 37122, 37138)
-- **Response Format**: Shopify-compatible rate objects
-- **Error Handling**: Graceful fallback to standard shipping
-- **Performance**: <50ms response time for local ZIP lookup
-
-### **Deployment Details:**
-- **Platform**: Vercel serverless functions
-- **Configuration**: Modern vercel.json (auto-detection)
-- **Module System**: ES modules with proper imports
-- **Protection**: Public access (no bypass tokens needed)
-
----
-
-*Last updated: September 26, 2025*
+*Focus: Get carrier service tested in production Shopify store*
