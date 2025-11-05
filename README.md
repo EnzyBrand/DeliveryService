@@ -1,200 +1,209 @@
-# Enzy Delivery Carrier Service
+# 🧭 Enzy Delivery Middleware
+**Unified Shopify ↔ StopSuite Integration**
 
-A Shopify CarrierService integration that provides dynamic "Carbon Negative Local Delivery" rates at checkout based on StopSuite service zone validation.
+A custom Node.js service that provides dynamic "Carbon Negative Local Delivery" rates at Shopify checkout based on StopSuite service zone validation.
 
-**Production Endpoint:** `https://enzy-delivery-carrier-service.vercel.app/api/shipping-rates`
+**Production Status:** Carrier service deployed and functional ✅
+**Future:** Automatic order sync (built but not deployed yet) ⚠️
 
----
+🧩 Tech Stack
 
-## 🎯 What It Does
+Node.js (v18+) — https://nodejs.org
 
-During Shopify checkout, this service:
-1. Receives customer address from Shopify
-2. Geocodes address using Google Maps API
-3. Validates if address is within StopSuite service zones
-4. Returns "Carbon Negative Local Delivery" ($4.99) if inside zone
-5. Returns empty array (Shopify shows defaults) if outside zone
+Express.js Backend — https://expressjs.com
 
-**Critical Feature:** Without this, customers can't see custom delivery options at checkout.
+Shopify CarrierService API — Shopify Dev Docs
 
----
+🌍 Overview
 
-## 🚀 Quick Start
+Enzy Delivery acts as the middleware layer between Shopify Checkout and StopSuite.
+It powers:
 
-### Prerequisites
-- Node.js v18+
-- Shopify store with Admin API access
-- Google Maps API key
-- StopSuite API credentials
+🧮 Dynamic rate calculation (during checkout)
 
-### Installation
-```bash
+🧾 Order + customer sync (after purchase)
+
+Initially built as a Nashville-only ZIP matcher, it’s now a full HMAC-authenticated StopSuite integration using live zone validation, customer creation, and shop-order sync.
+
+✨ Key Features
+🚚 Real-Time Compost Delivery Rates (Rates Layer)
+
+Fully compliant with Shopify’s CarrierService API
+
+Uses Google Maps Geocoding → latitude/longitude
+
+Calls StopSuite API to validate compost zone eligibility
+
+Returns dynamic “Compost Nashville Delivery” rate in checkout
+
+📦 Automatic Shop Order Creation (Ops Layer)
+
+HMAC authentication using StopSuite’s signature protocol
+
+Syncs customer + address + order into StopSuite
+
+Designed for scalable multi-zone expansion (future Compost KC, Compost ATL, etc.)
+
+Includes signed route fetching endpoint for operational debugging
+
+🔒 Reliability
+
+Graceful error recovery for StopSuite sandbox timeouts
+
+Detailed logging for each request
+
+Safe fallback to standard shipping if Compost route unavailable
+
+🧱 Why It’s Unified (for Now)
+
+While some architectures split “checkout logic” and “post-purchase logic” into separate apps, Enzy Delivery stays unified in V1 to:
+
+✅ Simplify deployment — one .env, one Vercel project
+✅ Keep Shopify and StopSuite credentials in one secure environment
+✅ Allow local development + testing via a single ngrok tunnel
+✅ Eliminate cross-service dependencies before scale
+
+Once multi-city expansion begins or load increases, this codebase can be cleanly split into:
+
+enzy-rates → Handles checkout logic
+
+enzy-ops → Handles fulfillment + route management
+
+🧭 Data Flow Overview
+At Checkout
+Shopify Checkout
+  ↓
+CarrierService → EnzyDelivery (/api/shipping-rates)
+  ↓
+Google Maps Geocode → Latitude / Longitude
+  ↓
+StopSuite API Validation (/api/check-service-area)
+  ↓
+Returns Compost Nashville delivery rate (or fallback)
+
+After Purchase
+Shopify Order Creation
+  ↓
+Webhook → EnzyDelivery (/api/create-order)
+  ↓
+Creates StopSuite customer → location → shop order
+  ↓
+Optional: route assignment (future)
+
+⚙️ Key Endpoints
+Endpoint	Description	Status
+GET /health	Health check for uptime monitoring	✅ Production
+POST /api/shipping-rates	Calculates live compost delivery eligibility	✅ Production
+GET /api/routes/fetch-active	Lists all active routes in StopSuite	Built
+POST /api/webhooks/order-created	Creates StopSuite shop order after checkout	⚠️ Built, not deployed
+POST /api/webhooks/stopsuite-complete	StopSuite → Shopify fulfillment updates	⚠️ Built, not deployed
+⚡ Local Development Setup
+
+1️⃣ Clone & Install
+
 git clone <repository-url>
-cd enzy-delivery-app
+cd EnzyDelivery
 npm install
-cp .env.example .env
-# Edit .env with your API keys
-```
 
-### Required Environment Variables
-```env
+
+2️⃣ Environment Variables (.env)
+
 STOPSUITE_API_KEY=pk_xxxxx
 STOPSUITE_SECRET_KEY=sk_xxxxx
 GOOGLE_MAPS_API_KEY=AIza...
-```
+SHOPIFY_ADMIN_API_KEY=shpat_xxxxx
+SHOPIFY_STORE_URL=myshop.myshopify.com
 
-### Run Locally
-```bash
+
+3️⃣ Run Server
+
+node dev-carrier-server.js
+# or
 npm run start:dev
-# Server starts at http://localhost:3000
-```
 
-### Deploy to Production
-```bash
-vercel --prod
-# Add environment variables in Vercel dashboard
-```
 
----
+4️⃣ Expose via ngrok
 
-## 📚 Documentation
+ngrok http 3001
 
-- **[TODO.md](./TODO.md)** - Current status, task tracking, and next steps
-- **[CLAUDE.md](./CLAUDE.md)** - AI assistant guidance for code changes
-- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Future microservices separation plan
 
----
+Then register your ngrok URL with Shopify’s CarrierService API callback.
 
-## 🧪 Testing
+🧱 File Overview
+File	Description	Status
+api/shipping-rates.js	Returns compost delivery rates at checkout	✅ Deployed
+api/zone-validator.js	StopSuite zone validation	✅ Deployed
+api/health.js	Health check endpoint	✅ Deployed
+api/routes/fetch-active.js	Signed StopSuite route fetch	Built
+api/webhooks/order-created.js	Shopify → StopSuite order sync	⚠️ Built, not deployed
+api/webhooks/stopsuite-complete.js	StopSuite → Shopify fulfillment updates	⚠️ Built, not deployed
+lib/geocode.js	Converts address → coordinates	✅ In use
+lib/stopsuite-sync.js	StopSuite API utilities	Built
+dev-carrier-server.js	Express entry point (local dev)	Dev only
+🧠 Technical Summary
 
-### Health Check
-```bash
-curl https://enzy-delivery-carrier-service.vercel.app/health
-```
+**Current Flow (Deployed):**
+1. Shopify sends checkout data → `/api/shipping-rates`
+2. EnzyDelivery geocodes address → validates StopSuite zone
+3. Returns compost delivery rate (or empty array for fallback)
+4. Shopify displays delivery options to customer
 
-### Test With Address
-```bash
-curl -X POST https://enzy-delivery-carrier-service.vercel.app/api/shipping-rates \
-  -H "Content-Type: application/json" \
-  -d '{
-    "rate": {
-      "destination": {
-        "address1": "123 Broadway",
-        "city": "Nashville",
-        "province": "TN",
-        "postal_code": "37201",
-        "country": "US"
-      }
+**Future Flow (Not Deployed Yet):**
+5. Shopify creates order → webhook triggers `/api/webhooks/order-created`
+6. StopSuite receives customer + location + order creation
+7. StopSuite completion → webhook triggers `/api/webhooks/stopsuite-complete`
+8. Shopify order marked as fulfilled
+
+🧾 Example: Shipping Rate Response
+{
+  "rates": [
+    {
+      "service_name": "Carbon Negative Delivery by Compost Nashville",
+      "service_code": "NASH_COMPOST_DELIVERY",
+      "total_price": "499",
+      "description": "Delivered locally by Compost Nashville – carbon negative and zero plastic.",
+      "currency": "USD",
+      "min_delivery_date": "2025-10-15",
+      "max_delivery_date": "2025-10-17"
     }
-  }'
-```
+  ]
+}
 
-### Run Internal Tests
-```bash
-npm run start:dev
-# Then visit http://localhost:3000/test
-```
+🔜 Coming Next (v2 Roadmap)
+Feature	Purpose
+StopSuite ↔ Shopify fulfillment sync	Mark orders as delivered
+Customer matching (Compost Nashville users)	Tailor shipping messages + rates
+Route assignment automation	Assign StopSuite driver automatically
+Separate Rates + Ops services	For multi-city scalability
+Order status updates	“Order Received → Preparing → Out for Delivery”
+🧰 Dev Commands
+npm start                # Run Express server
+npm run test:carrier     # Test rate logic
+node test-shoporder.js   # Simulate StopSuite order creation
+vercel --prod            # Deploy to Vercel
 
----
+🏗️ Architecture Summary
 
-## 🔌 Shopify Integration
-
-### Register Carrier Service
-```bash
-node register-carrier.js
-# Or use the curl command in TODO.md
-```
-
-### Enable in Shopify
-1. Go to **Settings → Shipping and delivery**
-2. Enable third-party calculated shipping rates
-3. Your carrier service should appear automatically
-
----
-
-## 🏗️ Project Structure
-
-```
-/api/
-  ├── shipping-rates.js      # Main carrier service endpoint
-  ├── zone-validator.js      # StopSuite zone validation
-  └── health.js              # Health check
-
-/lib/
-  ├── geocode.js             # Google Maps geocoding
-  └── stopsuite-sync.js      # StopSuite order sync (future middleware)
-
-/api/webhooks/               # Future middleware (order automation)
-  ├── order-created.js       # Shopify → StopSuite
-  └── stopsuite-complete.js  # StopSuite → Shopify
-```
-
-**Note:** This project currently contains both carrier service (CRITICAL) and order middleware (NICE-TO-HAVE). See [ARCHITECTURE.md](./ARCHITECTURE.md) for separation plan.
-
----
-
-## 🛠️ Tech Stack
-
-- **Runtime**: Node.js v18+ with ES modules
-- **Framework**: Express.js
-- **APIs**: Shopify CarrierService, Google Maps Geocoding, StopSuite
-- **Deployment**: Vercel Serverless Functions
-- **Authentication**: HMAC-SHA256 signatures
-
----
-
-## 📖 Key Files
-
-| File | Purpose |
-|------|---------|
-| `api/shipping-rates.js` | Shopify carrier service endpoint |
-| `lib/geocode.js` | Google Maps address → coordinates |
-| `api/zone-validator.js` | StopSuite zone validation |
-| `dev-carrier-server.js` | Local development server |
-| `register-carrier.js` | CLI tool to register with Shopify |
-
----
-
-## 🔄 Data Flow
-
+**✅ Currently Deployed:**
 ```
 Shopify Checkout
-    ↓
-POST /api/shipping-rates
-    ↓
-Geocode address (Google Maps)
-    ↓
-Validate zone (StopSuite API)
-    ↓
-Return rate or empty array
-    ↓
-Shopify displays options to customer
+ ↓
+CarrierService → /api/shipping-rates
+ ↓
+Google Maps Geocoding + StopSuite Zone Check
+ ↓
+Returns "Carbon Negative Delivery" rate
 ```
 
----
+**⚠️ Built But Not Deployed:**
+```
+Shopify Order Created
+ ↓
+Webhook → /api/webhooks/order-created
+ ↓
+StopSuite: Create customer + location + shop order
+ ↓
+(Future) Assign to driver route
+```
 
-## 🤝 Contributing
-
-1. Make changes locally
-2. Test with `npm run start:dev`
-3. Test with real Shopify store using ngrok
-4. Deploy to Vercel
-5. Update relevant documentation
-
----
-
-## 📝 License
-
-UNLICENSED - Private project
-
----
-
-## 🆘 Support
-
-- Check [TODO.md](./TODO.md) for current status and known issues
-- Review [CLAUDE.md](./CLAUDE.md) for code conventions
-- See [ARCHITECTURE.md](./ARCHITECTURE.md) for system design
-
----
-
-*Production Ready - Carrier service fully functional*
+For more details on the unified v1 architecture and future v2 separation plan, see **[ARCHITECTURE.md](./ARCHITECTURE.md)**.

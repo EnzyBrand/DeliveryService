@@ -1,10 +1,16 @@
 #!/usr/bin/env node
-import 'dotenv/config'; // ✅ Automatically loads .env variables
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import crypto from 'crypto';
+import fetch from 'node-fetch';
+
+// ✅ Import routes
 import handler from './api/shipping-rates.js';
 import orderCreatedWebhook from './api/webhooks/order-created.js';
-import stopsuiteCompleteWebhook from './api/webhooks/stopsuite-complete.js'; // ✅ NEW: StopSuite → Shopify webhook
+import stopsuiteCompleteWebhook from './api/webhooks/stopsuite-complete.js';
+import fetchActiveRoutes from './api/routes/fetch-active.js';
+
 // ✅ Global constants
 export const STOPSUITE_BASE_URL = "https://demo4.stopsuite.com/api/client/";
 
@@ -17,7 +23,6 @@ console.log('🧭 ENV Loaded:', {
 
 console.log(`🔗 Using StopSuite base URL: ${STOPSUITE_BASE_URL}`);
 
-// ✅ Initialize Express
 const app = express();
 
 // ✅ Preserve raw request body for Shopify webhooks
@@ -34,13 +39,13 @@ app.use(
 
 app.use(cors());
 
-// ✅ Debugging middleware to log every incoming request
+// ✅ Debugging middleware
 app.use((req, res, next) => {
   console.log(`➡️  ${req.method} ${req.url}`);
   next();
 });
 
-// ✅ Health check endpoint
+// ✅ Health check
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'healthy',
@@ -50,16 +55,17 @@ app.get('/health', (req, res) => {
   });
 });
 
-// ✅ Root info endpoint
+// ✅ Root endpoint
 app.get('/', (req, res) => {
   res.json({
     service: 'Enzy Delivery Carrier Service',
-    description:
-      'Provides conditional free shipping for Nashville area deliveries',
+    description: 'Provides conditional free shipping for Nashville area deliveries',
     endpoints: {
       health: 'GET /health',
       shippingRates: 'POST /api/shipping-rates',
       orderWebhook: 'POST /api/webhooks/order-created',
+      fetchRoutes: 'GET /api/routes/fetch-active',
+      testRoutes: 'GET /api/test-routes',
       test: 'GET /test',
     },
   });
@@ -68,8 +74,61 @@ app.get('/', (req, res) => {
 // ✅ Shopify carrier service route
 app.post('/api/shipping-rates', handler);
 
-// ✅ Mount Shopify webhook route
+// ✅ Webhooks
 app.use('/api/webhooks', orderCreatedWebhook);
+
+// ✅ StopSuite Active Routes
+app.get('/api/routes/fetch-active', fetchActiveRoutes);
+
+/**
+ * ✅ Signed StopSuite request helper
+ */
+function generateStopSuiteSignature(method, path, body = "") {
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const nonce = crypto.randomUUID();
+  const normalizedPath = path.startsWith("/api/client/")
+    ? path
+    : `/api/client${path.startsWith("/") ? path : `/${path}`}`;
+  const message = `${method}|${normalizedPath}|${timestamp}|${nonce}|${body}`;
+  const signature = crypto
+    .createHmac("sha256", process.env.STOPSUITE_SECRET_KEY)
+    .update(message, "utf8")
+    .digest("hex");
+  return { timestamp, nonce, signature };
+}
+
+/**
+ * ✅ NEW: Test StopSuite route output (fully signed)
+ */
+app.get('/api/test-routes', async (req, res) => {
+  try {
+    console.log("🧪 Fetching raw StopSuite routes (signed request)...");
+    const path = "/routes/";
+    const { timestamp, nonce, signature } = generateStopSuiteSignature("GET", path);
+    const url = `${STOPSUITE_BASE_URL}routes/`;
+
+    const headers = {
+      "X-API-Key": process.env.STOPSUITE_API_KEY,
+      "X-Signature": signature,
+      "X-Timestamp": timestamp,
+      "X-Nonce": nonce,
+      "Accept": "application/json",
+    };
+
+    console.log("🧩 Signed headers:", headers);
+
+    const response = await fetch(url, { method: "GET", headers });
+    const text = await response.text();
+
+    console.log("🧩 Raw StopSuite Response Preview:\n", text.slice(0, 500));
+
+    res.setHeader("Content-Type", "application/json");
+    res.status(response.status).send(text);
+  } catch (err) {
+    console.error("❌ Error fetching test routes:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ✅ Internal test endpoint
 app.get('/test', async (req, res) => {
@@ -129,7 +188,7 @@ app.get('/test', async (req, res) => {
         json: (data) => {
           responseData = data;
           console.log(
-            `✅ Response returned for ${testCase.name}:`,
+            `✅ Response for ${testCase.name}:`,
             JSON.stringify(data, null, 2)
           );
           return mockRes;
@@ -166,13 +225,16 @@ app.get('/test', async (req, res) => {
 });
 
 // ✅ Smart port assignment
-const DEFAULT_PORT = 3000;
+const DEFAULT_PORT = 3001;
 const server = app.listen(DEFAULT_PORT, () => {
   console.log(`🚀 Enzy Delivery Carrier Service running on port ${DEFAULT_PORT}`);
   console.log(`📋 Health check: http://localhost:${DEFAULT_PORT}/health`);
   console.log(`🧪 Test endpoint: http://localhost:${DEFAULT_PORT}/test`);
   console.log(`🚚 Shipping rates: http://localhost:${DEFAULT_PORT}/api/shipping-rates`);
   console.log(`📬 Webhook: http://localhost:${DEFAULT_PORT}/api/webhooks/order-created`);
+  console.log(`📦 StopSuite Order Sync: http://localhost:${DEFAULT_PORT}/api/create-order`);
+  console.log(`🗺️  StopSuite Route Map: http://localhost:${DEFAULT_PORT}/api/routes/fetch-active`);
+  console.log(`🔍  StopSuite Raw Response: http://localhost:${DEFAULT_PORT}/api/test-routes`);
   console.log(`\n🌐 To expose via ngrok: ngrok http ${DEFAULT_PORT}`);
 });
 
@@ -185,6 +247,9 @@ server.on('error', (err) => {
       console.log(`🧪 Test endpoint: http://localhost:${fallbackPort}/test`);
       console.log(`🚚 Shipping rates: http://localhost:${fallbackPort}/api/shipping-rates`);
       console.log(`📬 Webhook: http://localhost:${fallbackPort}/api/webhooks/order-created`);
+      console.log(`📦 StopSuite Order Sync: http://localhost:${fallbackPort}/api/create-order`);
+      console.log(`🗺️  StopSuite Route Map: http://localhost:${fallbackPort}/api/routes/fetch-active`);
+      console.log(`🔍  StopSuite Raw Response: http://localhost:${fallbackPort}/api/test-routes`);
       console.log(`\n🌐 To expose via ngrok: ngrok http ${fallbackPort}`);
     });
   } else {

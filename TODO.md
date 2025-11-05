@@ -1,8 +1,8 @@
 # TODO - Enzy Delivery Carrier Service
 
-**Current Branch:** `feature/compost-nashville-delivery`
-**Status:** Stable - Carrier service fully functional
-**Last Updated:** October 29, 2025
+**Current Branch:** `docs/update-readme-claude`
+**Status:** ✅ Production Ready - Carrier service tested and working in Shopify
+**Last Updated:** November 4, 2025
 
 ---
 
@@ -30,32 +30,10 @@
 ## 📋 TODO: Immediate Tasks
 
 ### **High Priority - Carrier Service**
-- [ ] Test carrier service in real Shopify store
-  - [ ] Register carrier service with Shopify Admin API
-  - [ ] Test checkout with Nashville addresses (should show Carbon Negative delivery)
-  - [ ] Test checkout with non-Nashville addresses (should show Shopify defaults)
-  - [ ] Verify fallback behavior on API failures
 
-- [ ] Test Postman collection
-  - [ ] Import `postman-collection.json` into Postman
-  - [ ] Test all production endpoints (health, shipping rates, edge cases)
-  - [ ] Test local development endpoints
-  - [ ] Verify responses match expected behavior
-
-- [ ] Add environment variables to Vercel
-  - [ ] `STOPSUITE_API_KEY`
-  - [ ] `STOPSUITE_SECRET_KEY`
-  - [ ] `GOOGLE_MAPS_API_KEY`
-
-- [ ] Monitor production
-  - [ ] Set up health check monitoring
-  - [ ] Watch for errors in Vercel logs
-  - [ ] Track response times
 
 ### **Medium Priority - Documentation**
-- [ ] Update README with actual Shopify store integration results
-- [ ] Document any edge cases discovered during testing
-- [ ] Add troubleshooting section based on real issues
+
 
 ### **Low Priority - Future Enhancements**
 - [ ] **Add proper unit tests with Jest/Vitest**
@@ -98,50 +76,6 @@
 - [ ] Automatic fulfillment updates in Shopify
 - [ ] Retry logic for failed syncs
 - [ ] Database for sync status tracking
-
----
-
-## 🧪 Testing Checklist
-
-### **Local Testing:**
-- [x] Dev server starts (`npm run start:dev`)
-- [x] Internal test endpoint works (`/test`)
-- [x] Health check responds (`/health`)
-- [x] Shipping rates endpoint responds correctly
-
-### **Production Testing:**
-- [x] Health endpoint accessible
-- [x] Shipping rates endpoint responds
-- [ ] Test with real Shopify store
-- [ ] Test with various addresses
-- [ ] Confirm zone validation accuracy
-- [ ] Verify error handling
-
-### **Integration Testing:**
-- [ ] Register with Shopify test store
-- [ ] Test checkout flow
-- [ ] Test Nashville address (should get custom rate)
-- [ ] Test non-Nashville address (should get Shopify default)
-- [ ] Test malformed address (should fail gracefully)
-
----
-
-## 🚀 Deployment Checklist
-
-### **Vercel Production:**
-- [x] Code deployed to Vercel
-- [x] Health endpoint working
-- [x] Shipping rates endpoint working
-- [ ] Environment variables configured
-- [ ] Error monitoring set up
-- [ ] Performance monitoring set up
-
-### **Shopify Integration:**
-- [ ] Obtain Shopify Admin API credentials
-- [ ] Register carrier service
-- [ ] Enable third-party shipping rates
-- [ ] Test in Shopify checkout
-- [ ] Monitor for errors
 
 ---
 
@@ -199,7 +133,7 @@ curl -X POST "https://YOUR_STORE.myshopify.com/admin/api/2025-10/carrier_service
 ## 📚 Related Documentation
 
 - **[README.md](./README.md)** - Quick start and overview
-- **[CLAUDE.md](./CLAUDE.md)** - AI assistant coding guidelines
+- **[.claude/CLAUDE.md](./.claude/CLAUDE.md)** - AI assistant coding guidelines
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Future microservices separation plan
 
 ---
@@ -220,4 +154,5 @@ curl -X POST "https://YOUR_STORE.myshopify.com/admin/api/2025-10/carrier_service
 
 ---
 
-*Focus: Get carrier service tested in production Shopify store*
+*Status: Carrier service successfully tested and working in production Shopify store ✅*
+*Next Focus: Monitor production performance, prepare for v2 webhook integration when ready*

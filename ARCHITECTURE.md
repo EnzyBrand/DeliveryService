@@ -1,8 +1,16 @@
 # Architecture & Future Project Separation Plan
 
-## 🏗️ **Current State: Monolithic Architecture**
+> **⚠️ IMPORTANT:** This document describes the **FUTURE** (v2+) architecture plan, NOT current problems to fix.
+>
+> **For v1:** The unified architecture is INTENTIONAL and CORRECT. Don't split anything yet!
+>
+> **When to read this:** When planning v2, multi-city expansion, or experiencing performance issues.
 
-Currently, this project contains **TWO distinct services** in one codebase:
+---
+
+## 🏗️ **Current State: Unified v1 Architecture (Intentional)**
+
+Currently, this project contains **TWO distinct services** in one codebase BY DESIGN:
 
 1. **Carrier Service** - Lightweight, high-frequency rate calculator (CRITICAL for checkout)
 2. **Order Middleware** - Complex, low-frequency order sync system (NICE-TO-HAVE for automation)
@@ -296,12 +304,16 @@ Customer receives delivery confirmation email from Shopify
 - ✅ **Later**: When manual order entry becomes too time-consuming
 - ⚠️ **Required**: If Vercel serverless timeouts become an issue
 
-### **What to Keep Together (For Now):**
-We're keeping them together during initial development because:
-- Easier to iterate on both systems simultaneously
-- Shared environment variables and configuration
-- Simpler deployment process while testing
-- Can validate the full flow end-to-end locally
+### **Why v1 is Intentionally Unified (The Right Choice):**
+We're keeping them together for v1 because:
+- ✅ **Faster to market** - Single deployment, single codebase
+- ✅ **Easier to debug** - All logs in one place, single Vercel project
+- ✅ **Simpler operations** - One .env, one ngrok tunnel, one monitoring dashboard
+- ✅ **Lower overhead** - No inter-service communication, no version sync issues
+- ✅ **Carrier service is fast enough** - Well under 2-second Shopify timeout
+- ✅ **Order sync not critical yet** - Manual entry works fine while testing
+
+**This unified approach is CORRECT for early-stage MVP.** Only split when you hit real scaling problems.
 
 ### **When to Definitely Separate:**
 You **must** separate when:
