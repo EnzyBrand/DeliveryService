@@ -3,8 +3,8 @@ import fetch from "node-fetch";
 import crypto from "crypto";
 import { STOPSUITE_BASE_URL } from "../../dev-carrier-server.js";
 
-const API_KEY = process.env.STOPSUITE_API_KEY;
-const SECRET_KEY = process.env.STOPSUITE_SECRET_KEY;
+const API_KEY = process.env.STOPSUITE_API_KEY?.trim();
+const SECRET_KEY = process.env.STOPSUITE_SECRET_KEY?.trim();
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

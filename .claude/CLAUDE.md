@@ -238,9 +238,10 @@ async function handler(req, res) {
 
 /scripts/                      # CLI tools & testing
   ├── test-*.js                # Test scripts
-  ├── register-carrier.js      # Shopify admin scripts
-  ├── list-carriers.js
-  └── delete-carrier.js
+  ├── register-carrier.js      # Register new carrier service
+  ├── update-carrier.js        # Update carrier callback URL
+  ├── list-carriers.js         # List registered carriers
+  └── delete-carrier.js        # Delete carrier service
 ```
 
 ### When to Create New Files
@@ -386,6 +387,94 @@ res.setHeader('X-Shopify-Carrier-Exclusive', 'true');
 
 return res.json({ rates: [...] });
 ```
+
+---
+
+## 🛠️ Carrier Service Management
+
+### Environment Variable Pattern
+
+Scripts should support both production and local development URLs:
+
+```javascript
+// ✅ CORRECT - Flexible URL configuration
+const { VERCEL_PRODUCTION_URL, NGROK_URL } = process.env;
+
+// Use production URL if available, otherwise fall back to ngrok
+const callbackBaseUrl = VERCEL_PRODUCTION_URL || NGROK_URL;
+
+if (!callbackBaseUrl) {
+  console.error("❌ No callback URL configured.");
+  console.error("Set either VERCEL_PRODUCTION_URL (for production) or NGROK_URL (for local dev).");
+  process.exit(1);
+}
+
+console.log(`🌐 Using callback URL: ${callbackBaseUrl}/api/shipping-rates`);
+console.log(`📍 Environment: ${VERCEL_PRODUCTION_URL ? "Production (Vercel)" : "Local Development (ngrok)"}`);
+```
+
+### Script Usage Patterns
+
+```bash
+# Register new carrier service (first time)
+node scripts/register-carrier.js
+
+# List existing carrier services
+node scripts/list-carriers.js
+
+# Update callback URL (after redeploying to new Vercel URL)
+node scripts/update-carrier.js <carrier_id>
+
+# Delete carrier service
+node scripts/delete-carrier.js <carrier_id>
+```
+
+### Carrier Service Scripts
+
+**register-carrier.js** - Creates new carrier service
+- Uses: POST `/admin/api/2025-10/carrier_services.json`
+- When: First time setup
+- Fails if: Carrier with same name already exists
+
+**update-carrier.js** - Updates existing carrier's callback URL
+- Uses: PUT `/admin/api/2025-10/carrier_services/{id}.json`
+- When: After redeploying to new Vercel URL
+- Requires: Carrier ID from `list-carriers.js`
+
+**list-carriers.js** - Lists all registered carriers
+- Uses: GET `/admin/api/2025-10/carrier_services.json`
+- When: To find carrier ID for update/delete operations
+
+**delete-carrier.js** - Removes carrier service
+- Uses: DELETE `/admin/api/2025-10/carrier_services/{id}.json`
+- When: Cleanup or testing
+
+### Important: Vercel URL Types
+
+**⚠️ Always use the STABLE production URL, not deployment-specific URLs**
+
+Vercel generates two types of URLs:
+
+```
+❌ WRONG - Deployment-specific (changes every deploy):
+https://project-pvk61xgx4-team.vercel.app
+https://project-6stfv7dbi-team.vercel.app
+https://project-fzl0kan9k-team.vercel.app
+
+✅ CORRECT - Stable production URL (never changes):
+https://project-team.vercel.app  (for team accounts)
+https://project.vercel.app        (for personal accounts)
+```
+
+The stable URL automatically points to your latest production deployment.
+
+**How to find your stable URL:**
+- Team accounts: `https://<project-name>-<team-name>.vercel.app`
+- Personal accounts: `https://<project-name>.vercel.app`
+- Or run: `vercel domains ls` to see configured domains
+
+**Why this matters:**
+If you use deployment-specific URLs in `VERCEL_PRODUCTION_URL`, you'll have to update Shopify's carrier service after every deployment. Use the stable URL once and never update it again.
 
 ---
 

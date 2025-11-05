@@ -1,4 +1,4 @@
-// register-carrier.js
+// update-carrier.js
 import fetch from "node-fetch";
 import dotenv from "dotenv";
 dotenv.config();
@@ -23,21 +23,18 @@ if (!callbackBaseUrl) {
 console.log(`🌐 Using callback URL: ${callbackBaseUrl}/api/shipping-rates`);
 console.log(`📍 Environment: ${VERCEL_PRODUCTION_URL ? "Production (Vercel)" : "Local Development (ngrok)"}`);
 
-async function registerCarrier() {
-  const apiUrl = `https://${SHOPIFY_STORE_URL}/admin/api/2025-10/carrier_services.json`;
+async function updateCarrier(carrierId) {
+  const apiUrl = `https://${SHOPIFY_STORE_URL}/admin/api/2025-10/carrier_services/${carrierId}.json`;
 
   const payload = {
     carrier_service: {
-      name: "Carbon Negative Local Delivery",
       callback_url: `${callbackBaseUrl}/api/shipping-rates`,
-      service_discovery: true,
-      format: "json",
     },
   };
 
   try {
     const res = await fetch(apiUrl, {
-      method: "POST",
+      method: "PUT",
       headers: {
         "Content-Type": "application/json",
         "X-Shopify-Access-Token": SHOPIFY_ADMIN_API_KEY,
@@ -59,11 +56,22 @@ async function registerCarrier() {
       return;
     }
 
-    console.log("✅ Carrier service registered successfully:");
+    console.log("✅ Carrier service updated successfully:");
     console.log(JSON.stringify(data, null, 2));
   } catch (err) {
-    console.error("❌ Error registering carrier service:", err.message);
+    console.error("❌ Error updating carrier service:", err.message);
   }
 }
 
-registerCarrier();
+// Get carrier ID from command line argument
+const carrierId = process.argv[2];
+
+if (!carrierId) {
+  console.error("❌ Please provide a carrier service ID.");
+  console.error("Usage: node scripts/update-carrier.js <carrier_id>");
+  console.error("\nRun 'node scripts/list-carriers.js' to see available carrier IDs.");
+  process.exit(1);
+}
+
+console.log(`🔄 Updating carrier service ID: ${carrierId}\n`);
+updateCarrier(carrierId);

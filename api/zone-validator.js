@@ -2,8 +2,8 @@ import fetch from "node-fetch";
 import crypto from "crypto";
 
 const STOPSUITE_API = "https://demo4.stopsuite.com/api/check-service-area/";
-const STOPSUITE_API_KEY = process.env.STOPSUITE_API_KEY;
-const STOPSUITE_SECRET_KEY = process.env.STOPSUITE_SECRET_KEY;
+const STOPSUITE_API_KEY = process.env.STOPSUITE_API_KEY?.trim();
+const STOPSUITE_SECRET_KEY = process.env.STOPSUITE_SECRET_KEY?.trim();
 
 function generateSignature(method, path, timestamp, nonce, body) {
   const message = `${method}|${path}|${timestamp}|${nonce}|${body}`;

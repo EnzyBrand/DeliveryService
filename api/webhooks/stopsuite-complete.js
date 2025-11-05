@@ -1,9 +1,9 @@
 import crypto from "crypto";
 import fetch from "node-fetch";
 
-const STOPSUITE_SECRET_KEY = process.env.STOPSUITE_SECRET_KEY;
-const SHOPIFY_ADMIN_URL = process.env.SHOPIFY_ADMIN_URL;
-const SHOPIFY_ADMIN_TOKEN = process.env.SHOPIFY_ADMIN_TOKEN;
+const STOPSUITE_SECRET_KEY = process.env.STOPSUITE_SECRET_KEY?.trim();
+const SHOPIFY_ADMIN_URL = process.env.SHOPIFY_ADMIN_URL?.trim();
+const SHOPIFY_ADMIN_TOKEN = process.env.SHOPIFY_ADMIN_TOKEN?.trim();
 
 /**
  * StopSuite → Shopify webhook (Vercel Serverless Function)

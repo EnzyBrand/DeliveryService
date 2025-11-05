@@ -8,10 +8,11 @@ A Node.js serverless application that calculates dynamic "Carbon Negative Local 
 
 ## 📋 Status
 
-**✅ Production:** Carrier service deployed and functional
+**✅ Production:** Carrier service deployed and registered with Shopify
 **⚠️ Built, Not Deployed:** Order sync webhooks (Vercel-ready)
 
-**Production URL:** `https://enzy-delivery-carrier-service-fzl0kan9k-tristan2828s-projects.vercel.app`
+**Production URL:** `https://enzy-delivery-carrier-service-tristan2828s-projects.vercel.app` (stable - never changes)
+**Shopify Carrier ID:** `74345676973`
 
 ---
 
@@ -185,7 +186,8 @@ curl -X POST https://your-app.vercel.app/api/shipping-rates \
 ├── scripts/                      # Testing & CLI tools
 │   ├── test-products.js          # Test product API
 │   ├── test-shoporder.js         # Test order creation
-│   ├── register-carrier.js       # Register Shopify carrier
+│   ├── register-carrier.js       # Register new Shopify carrier
+│   ├── update-carrier.js         # Update carrier callback URL
 │   ├── list-carriers.js          # List carriers
 │   └── delete-carrier.js         # Delete carrier
 ├── .claude/
@@ -247,12 +249,13 @@ node scripts/test-shoporder.js   # Test StopSuite order sync
 node scripts/test-products.js    # Test product fetching
 
 # Carrier service management
-node scripts/register-carrier.js # Register with Shopify
-node scripts/list-carriers.js    # List registered carriers
-node scripts/delete-carrier.js   # Delete carrier service
+node scripts/register-carrier.js          # Register new carrier with Shopify
+node scripts/update-carrier.js <id>       # Update existing carrier URL
+node scripts/list-carriers.js             # List registered carriers
+node scripts/delete-carrier.js <id>       # Delete carrier service
 
 # Deploy
-vercel --prod                    # Deploy to production
+vercel --prod                             # Deploy to production
 ```
 
 ---
@@ -261,22 +264,42 @@ vercel --prod                    # Deploy to production
 
 ### Shopify CarrierService Registration
 
-Use the included script or register manually:
+**Prerequisites:** Add these to your `.env` file:
+```env
+VERCEL_PRODUCTION_URL=https://your-app.vercel.app
+SHOPIFY_ADMIN_API_KEY=shpat_xxxxx
+SHOPIFY_STORE_URL=yourstore.myshopify.com
+```
+
+#### Register New Carrier Service
 
 ```bash
-# Using script
+# First time setup
 node scripts/register-carrier.js
-
-# Or via Shopify Admin API
-POST /admin/api/2024-01/carrier_services.json
-{
-  "carrier_service": {
-    "name": "Carbon Negative Local Delivery",
-    "callback_url": "https://your-app.vercel.app/api/shipping-rates",
-    "service_discovery": true
-  }
-}
 ```
+
+#### Update Existing Carrier Service URL
+
+```bash
+# List carriers to find ID
+node scripts/list-carriers.js
+
+# Update callback URL (e.g., after redeploying to new Vercel URL)
+node scripts/update-carrier.js <carrier_id>
+```
+
+**Example:**
+```bash
+$ node scripts/list-carriers.js
+# Find your carrier ID (e.g., 74345676973)
+
+$ node scripts/update-carrier.js 74345676973
+🌐 Using callback URL: https://your-app.vercel.app/api/shipping-rates
+📍 Environment: Production (Vercel)
+✅ Carrier service updated successfully
+```
+
+The scripts automatically use `VERCEL_PRODUCTION_URL` if set, otherwise fall back to `NGROK_URL` for local development.
 
 ---
 

@@ -47,20 +47,22 @@ For future architecture plans, see [ARCHITECTURE.md](./ARCHITECTURE.md)
 ### 🚀 Deployment & Integration
 
 #### 1. Register Shopify CarrierService
-**Status:** Not Started
+**Status:** ✅ Complete
 **Priority:** High
-**Estimated Time:** 15 minutes
+**Completed:** November 5, 2025
 
 **Tasks:**
-- [ ] Run `node scripts/register-carrier.js` with production URL
-- [ ] Verify carrier service appears in Shopify Admin → Settings → Shipping
-- [ ] Test with test order in Shopify checkout
+- [x] Run `node scripts/update-carrier.js` with production URL
+- [x] Verify carrier service appears in Shopify Admin → Settings → Shipping
+- [ ] Test with test order in Shopify checkout (Next step)
 - [ ] Verify rate appears correctly for Nashville addresses
 - [ ] Verify fallback to default rates for non-Nashville addresses
 
 **Success Criteria:**
-- Carrier service registered with callback URL: `https://enzy-delivery-carrier-service-fzl0kan9k-tristan2828s-projects.vercel.app/api/shipping-rates`
-- "Carbon Negative Local Delivery" appears as shipping option for eligible addresses
+- ✅ Carrier service registered with stable callback URL: `https://enzy-delivery-carrier-service-tristan2828s-projects.vercel.app/api/shipping-rates`
+- ⏳ "Carbon Negative Local Delivery" appears as shipping option for eligible addresses (Needs testing)
+
+**Note:** Using stable production URL that never changes (not deployment-specific URLs)
 
 ---
 

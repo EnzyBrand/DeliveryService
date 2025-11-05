@@ -93,7 +93,7 @@ function generateStopSuiteSignature(method, path, body = "") {
     : `/api/client${path.startsWith("/") ? path : `/${path}`}`;
   const message = `${method}|${normalizedPath}|${timestamp}|${nonce}|${body}`;
   const signature = crypto
-    .createHmac("sha256", process.env.STOPSUITE_SECRET_KEY)
+    .createHmac("sha256", process.env.STOPSUITE_SECRET_KEY?.trim())
     .update(message, "utf8")
     .digest("hex");
   return { timestamp, nonce, signature };
@@ -110,7 +110,7 @@ app.get('/api/test-routes', async (req, res) => {
     const url = `${STOPSUITE_BASE_URL}routes/`;
 
     const headers = {
-      "X-API-Key": process.env.STOPSUITE_API_KEY,
+      "X-API-Key": process.env.STOPSUITE_API_KEY?.trim(),
       "X-Signature": signature,
       "X-Timestamp": timestamp,
       "X-Nonce": nonce,
