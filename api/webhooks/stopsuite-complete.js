@@ -1,8 +1,6 @@
-import express from "express";
 import crypto from "crypto";
 import fetch from "node-fetch";
 
-const router = express.Router();
 const STOPSUITE_SECRET_KEY = process.env.STOPSUITE_SECRET_KEY;
 const SHOPIFY_ADMIN_URL = process.env.SHOPIFY_ADMIN_URL;
 const SHOPIFY_ADMIN_TOKEN = process.env.SHOPIFY_ADMIN_TOKEN;
@@ -10,12 +8,19 @@ const SHOPIFY_ADMIN_TOKEN = process.env.SHOPIFY_ADMIN_TOKEN;
 /**
  * StopSuite → Shopify webhook
  * Marks Shopify order fulfilled when driver marks delivery complete.
+ *
+ * ✅ Vercel-compatible serverless function (no Express.js)
  */
-router.post("/stopsuite-complete", express.json({ type: "*/*" }), async (req, res) => {
+export default async function handler(req, res) {
+  // Only accept POST requests
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
   try {
-    const hmacHeader = req.get("X-Signature");
-    const timestamp = req.get("X-Timestamp");
-    const nonce = req.get("X-Nonce");
+    const hmacHeader = req.headers["x-signature"];
+    const timestamp = req.headers["x-timestamp"];
+    const nonce = req.headers["x-nonce"];
     const body = JSON.stringify(req.body);
 
     // ✅ Verify HMAC
@@ -56,11 +61,9 @@ router.post("/stopsuite-complete", express.json({ type: "*/*" }), async (req, re
       console.log("✅ Shopify order fulfilled:", data);
     }
 
-    res.status(200).send("OK");
+    return res.status(200).send("OK");
   } catch (err) {
     console.error("❌ Webhook processing error:", err);
-    res.status(500).send("Error");
+    return res.status(500).send("Error");
   }
-});
-
-export default router;
+}

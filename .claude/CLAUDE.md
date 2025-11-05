@@ -28,6 +28,16 @@ This file contains coding style rules and development guidelines for AI assistan
 - ✅ Use **node-fetch** (ESM version) for all HTTP requests
 - ✅ Use **descriptive variable names** (e.g., `coordinates` not `coords`)
 
+### **⚡ Vercel Deployment Rules (CRITICAL)**
+- ❌ **NEVER use Express.js** in `/api/*.js` files — Vercel uses serverless functions
+- ✅ **ALWAYS export a default handler function**: `export default async function handler(req, res) { ... }`
+- ✅ Each `/api/*.js` file is an **isolated serverless function** (no shared state)
+- ✅ Access headers with `req.headers["header-name"]` (lowercase)
+- ✅ Access HTTP method with `req.method` (GET, POST, etc.)
+- ✅ Use `req.body` for parsed JSON (Vercel auto-parses)
+- ⚠️ **Express.js is ONLY for local development** (`dev-carrier-server.js`)
+- ⚠️ Never import from `dev-carrier-server.js` in production `/api/` files
+
 ### **Emoji-Based Logging**
 Maintain consistent emoji logging throughout the codebase:
 ```javascript
@@ -110,20 +120,51 @@ if (!API_KEY) {
   - Bad: `import { CONSTANT } from '../../dev-carrier-server.js'`
   - Good: Define constants locally or in `/lib/` shared utilities
 
-### **Module Structure**
+### **Module Structure (Vercel Serverless)**
 ```javascript
 // 1. Imports
 import fetch from 'node-fetch';
 import crypto from 'crypto';
 
-// 2. Constants
+// 2. Constants (use process.env for secrets)
 const API_BASE = 'https://api.example.com';
+const API_KEY = process.env.MY_API_KEY;
 
 // 3. Helper functions
 function helperFunction() { ... }
 
-// 4. Main export (for Vercel serverless)
-export default async function handler(req, res) { ... }
+// 4. Main export (REQUIRED for Vercel serverless)
+export default async function handler(req, res) {
+  // Method check
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    // Your logic here
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('❌ Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+}
+```
+
+**❌ WRONG (Express pattern - will FAIL on Vercel):**
+```javascript
+import express from 'express';
+const router = express.Router();
+router.post('/endpoint', (req, res) => { ... });
+export default router; // ❌ FAILS on Vercel
+```
+
+**✅ CORRECT (Vercel serverless pattern):**
+```javascript
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).end();
+  // ... your logic
+  return res.status(200).json({ success: true });
+}
 ```
 
 ---
@@ -171,9 +212,12 @@ This project integrates with **TWO separate StopSuite APIs:**
 **See [ARCHITECTURE.md](../ARCHITECTURE.md) for complete endpoint documentation.**
 
 ### **Vercel Deployment**
-- ✅ All `/api/*.js` files are serverless functions
+- ✅ All `/api/*.js` files are **serverless functions** (NOT Express routes)
+- ✅ Must export `export default async function handler(req, res) { ... }`
 - ✅ 10-second timeout limit (must respond quickly)
-- ✅ Each function is isolated (no shared state)
+- ✅ Each function is isolated (no shared state between requests)
+- ✅ Environment variables configured via `vercel env add`
+- ❌ **DO NOT use Express.js** in `/api/` files (only in `dev-carrier-server.js` for local dev)
 
 ### **Future Architecture**
 - 🔮 v2 will split into two services: `enzy-rates` and `enzy-ops`
@@ -188,12 +232,15 @@ Before committing new code, verify:
 
 - [ ] Uses ES Modules (`import`/`export`)
 - [ ] Uses async/await (no `.then()`)
+- [ ] **Uses Vercel serverless pattern** (NO Express.js in `/api/` files)
+- [ ] **Exports `handler(req, res)` function** for all `/api/*.js` files
 - [ ] Includes emoji-based logging
 - [ ] No hardcoded secrets (uses `process.env`)
 - [ ] Proper error handling with try/catch
 - [ ] HMAC signing for StopSuite Client API calls
 - [ ] Follows existing file organization
-- [ ] Tested locally with `npm run test:carrier` or similar
+- [ ] Tested locally with `npm run dev` or similar
+- [ ] **Tested on Vercel** after deployment (`vercel --prod`)
 - [ ] Updated README.md if adding new endpoint
 - [ ] Updated TODO.md if feature isn't deployed yet
 

@@ -8,16 +8,18 @@ A custom Node.js service that provides dynamic "Carbon Negative Local Delivery" 
 ## 📊 Current Status
 
 **✅ Production (Deployed & Working):**
-- Carrier Service: `https://enzy-delivery-carrier-service.vercel.app`
+- **Carrier Service:** `https://enzy-delivery-carrier-service.vercel.app`
 - Shopify CarrierService integration (`/api/shipping-rates`)
 - Google Maps geocoding (`lib/geocode.js`)
 - StopSuite zone validation (`api/zone-validator.js`)
 - Health check endpoint (`/health`)
-
-**⚠️ Built But Not Deployed:**
 - Webhook handlers (`/api/webhooks/order-created.js`, `/api/webhooks/stopsuite-complete.js`)
 - Order sync functionality (`/lib/stopsuite-sync.js`)
 - StopSuite route fetcher (`/api/routes/fetch-active.js`)
+
+**⚠️ Pending Configuration:**
+- Shopify webhook registration (requires Shopify admin access)
+- StopSuite webhook registration (requires StopSuite admin access)
 
 **Why v1 is Unified:** For simplicity and speed, we're keeping checkout logic and order sync in one codebase. See [ARCHITECTURE.md](./ARCHITECTURE.md) for the future v2 separation plan.
 
@@ -79,9 +81,9 @@ StopSuite: Create customer → location → shop order
 |----------|-------------|--------|
 | `GET /health` | Health check for uptime monitoring | ✅ Production |
 | `POST /api/shipping-rates` | Calculate delivery rates at checkout | ✅ Production |
-| `GET /api/routes/fetch-active` | Fetch active StopSuite routes (diagnostic) | ⚠️ Built |
-| `POST /api/webhooks/order-created` | Shopify → StopSuite order sync | ⚠️ Built |
-| `POST /api/webhooks/stopsuite-complete` | StopSuite → Shopify fulfillment updates | ⚠️ Built |
+| `GET /api/routes/fetch-active` | Fetch active StopSuite routes (diagnostic) | ✅ Production |
+| `POST /api/webhooks/order-created` | Shopify → StopSuite order sync | ✅ Production |
+| `POST /api/webhooks/stopsuite-complete` | StopSuite → Shopify fulfillment updates | ✅ Production |
 ## ⚡ Local Development Setup
 
 ### 1️⃣ Clone & Install
@@ -134,10 +136,10 @@ npm run carrier:delete <ID> # Delete carrier by ID
 | `api/zone-validator.js` | StopSuite zone validation logic | ✅ Deployed |
 | `api/health.js` | Health check endpoint | ✅ Deployed |
 | `api/routes/fetch-active.js` | StopSuite route fetcher (diagnostic) | ✅ Deployed |
-| `api/webhooks/order-created.js` | Shopify → StopSuite order sync | ⚠️ Built |
-| `api/webhooks/stopsuite-complete.js` | StopSuite → Shopify fulfillment updates | ⚠️ Built |
+| `api/webhooks/order-created.js` | Shopify → StopSuite order sync (Vercel handler) | ✅ Deployed |
+| `api/webhooks/stopsuite-complete.js` | StopSuite → Shopify fulfillment (Vercel handler) | ✅ Deployed |
 | `lib/geocode.js` | Google Maps geocoding utility | ✅ In use |
-| `lib/stopsuite-sync.js` | StopSuite API helper functions | ⚠️ Built |
+| `lib/stopsuite-sync.js` | StopSuite API helper functions | ✅ In use |
 | `scripts/` | Development & testing utilities | 🛠️ Dev only |
 | `dev-carrier-server.js` | Express app (local development) | 🛠️ Dev only |
 
@@ -204,5 +206,5 @@ curl -X POST https://enzy-delivery-carrier-service.vercel.app/api/shipping-rates
 
 ---
 
-**Status:** v1 carrier service is live and stable ✅
-**Next Focus:** Monitor production, prepare for v2 webhook integration
+**Status:** All services deployed to Vercel and operational ✅
+**Next Focus:** Configure Shopify and StopSuite webhook registrations

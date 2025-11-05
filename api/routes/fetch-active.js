@@ -27,6 +27,18 @@ function signStopSuiteRequest(method, path, body = "") {
 }
 
 export default async function fetchActiveRoutes(req, res) {
+  // Check for required environment variables
+  if (!API_KEY || !SECRET_KEY) {
+    console.error("❌ Missing StopSuite credentials");
+    return res.status(500).json({
+      error: "Server configuration error: Missing API credentials",
+      details: {
+        hasApiKey: !!API_KEY,
+        hasSecretKey: !!SECRET_KEY
+      }
+    });
+  }
+
   try {
     // --- STEP 1: Fetch route list ---
     const { signature, timestamp, nonce } = signStopSuiteRequest("GET", "/routes/");
