@@ -6,7 +6,7 @@ import crypto from 'crypto';
 import fetch from 'node-fetch';
 
 // ✅ Import routes
-import handler from './api/shipping-rates.js';
+import shippingRatesHandler from './api/shipping-rates.js';
 import orderCreatedWebhook from './api/webhooks/order-created.js';
 import stopsuiteCompleteWebhook from './api/webhooks/stopsuite-complete.js';
 import fetchActiveRoutes from './api/routes/fetch-active.js';
@@ -64,6 +64,7 @@ app.get('/', (req, res) => {
       health: 'GET /health',
       shippingRates: 'POST /api/shipping-rates',
       orderWebhook: 'POST /api/webhooks/order-created',
+      stopsuiteWebhook: 'POST /api/webhooks/stopsuite-complete',
       fetchRoutes: 'GET /api/routes/fetch-active',
       testRoutes: 'GET /api/test-routes',
       test: 'GET /test',
@@ -72,10 +73,11 @@ app.get('/', (req, res) => {
 });
 
 // ✅ Shopify carrier service route
-app.post('/api/shipping-rates', handler);
+app.post('/api/shipping-rates', shippingRatesHandler);
 
 // ✅ Webhooks
-app.use('/api/webhooks', orderCreatedWebhook);
+app.post('/api/webhooks/order-created', orderCreatedWebhook);
+app.post('/api/webhooks/stopsuite-complete', stopsuiteCompleteWebhook);
 
 // ✅ StopSuite Active Routes
 app.get('/api/routes/fetch-active', fetchActiveRoutes);
@@ -98,7 +100,7 @@ function generateStopSuiteSignature(method, path, body = "") {
 }
 
 /**
- * ✅ NEW: Test StopSuite route output (fully signed)
+ * ✅ Test StopSuite route output (fully signed)
  */
 app.get('/api/test-routes', async (req, res) => {
   try {
@@ -199,7 +201,7 @@ app.get('/test', async (req, res) => {
         },
       };
 
-      await handler(mockReq, mockRes);
+      await shippingRatesHandler(mockReq, mockRes);
 
       results.push({
         name: testCase.name,
@@ -231,10 +233,10 @@ const server = app.listen(DEFAULT_PORT, () => {
   console.log(`📋 Health check: http://localhost:${DEFAULT_PORT}/health`);
   console.log(`🧪 Test endpoint: http://localhost:${DEFAULT_PORT}/test`);
   console.log(`🚚 Shipping rates: http://localhost:${DEFAULT_PORT}/api/shipping-rates`);
-  console.log(`📬 Webhook: http://localhost:${DEFAULT_PORT}/api/webhooks/order-created`);
-  console.log(`📦 StopSuite Order Sync: http://localhost:${DEFAULT_PORT}/api/create-order`);
+  console.log(`📬 Order webhook: http://localhost:${DEFAULT_PORT}/api/webhooks/order-created`);
+  console.log(`📦 StopSuite webhook: http://localhost:${DEFAULT_PORT}/api/webhooks/stopsuite-complete`);
   console.log(`🗺️  StopSuite Route Map: http://localhost:${DEFAULT_PORT}/api/routes/fetch-active`);
-  console.log(`🔍  StopSuite Raw Response: http://localhost:${DEFAULT_PORT}/api/test-routes`);
+  console.log(`🔍 StopSuite Raw Response: http://localhost:${DEFAULT_PORT}/api/test-routes`);
   console.log(`\n🌐 To expose via ngrok: ngrok http ${DEFAULT_PORT}`);
 });
 
@@ -246,10 +248,10 @@ server.on('error', (err) => {
       console.log(`📋 Health check: http://localhost:${fallbackPort}/health`);
       console.log(`🧪 Test endpoint: http://localhost:${fallbackPort}/test`);
       console.log(`🚚 Shipping rates: http://localhost:${fallbackPort}/api/shipping-rates`);
-      console.log(`📬 Webhook: http://localhost:${fallbackPort}/api/webhooks/order-created`);
-      console.log(`📦 StopSuite Order Sync: http://localhost:${fallbackPort}/api/create-order`);
+      console.log(`📬 Order webhook: http://localhost:${fallbackPort}/api/webhooks/order-created`);
+      console.log(`📦 StopSuite webhook: http://localhost:${fallbackPort}/api/webhooks/stopsuite-complete`);
       console.log(`🗺️  StopSuite Route Map: http://localhost:${fallbackPort}/api/routes/fetch-active`);
-      console.log(`🔍  StopSuite Raw Response: http://localhost:${fallbackPort}/api/test-routes`);
+      console.log(`🔍 StopSuite Raw Response: http://localhost:${fallbackPort}/api/test-routes`);
       console.log(`\n🌐 To expose via ngrok: ngrok http ${fallbackPort}`);
     });
   } else {

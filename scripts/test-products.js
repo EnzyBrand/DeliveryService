@@ -1,4 +1,4 @@
-import { stopSuiteRequest } from "./lib/stopsuite-sync.js";
+import { stopSuiteRequest } from "../lib/stopsuite-sync.js";
 
 (async () => {
   try {

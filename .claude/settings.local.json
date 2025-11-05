@@ -14,7 +14,8 @@
       "Bash(test:*)",
       "Bash(dir:*)",
       "Bash(findstr:*)",
-      "Bash(vercel --prod:*)"
+      "Bash(vercel --prod:*)",
+      "Bash(vercel logs:*)"
     ],
     "deny": [],
     "ask": []

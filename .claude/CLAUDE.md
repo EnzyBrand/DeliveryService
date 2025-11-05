@@ -1,257 +1,565 @@
-# 🧭 CLAUDE.md
+# CLAUDE.md - Coding Guidelines
 
-**AI Coding Assistant Guidelines for Enzy Delivery Middleware**
+**Coding Style Rules and Development Guidelines for AI Assistants**
 
-This file contains coding style rules and development guidelines for AI assistants working on this project.
-
-> **📖 For project details, architecture, and setup instructions, see [README.md](../README.md)**
+This file contains coding style rules and development guidelines for AI assistants working on this project. For project info, see [README.md](../README.md). For remaining work, see [TODO.md](../TODO.md).
 
 ---
 
-## 🎯 Project Quick Reference
+## 🧱 Code Style & Syntax
 
-**What this project does:** Shopify ↔ StopSuite integration for carbon-negative delivery rates
+### JavaScript/Node.js Standards
 
-**Current status:** v1 carrier service deployed ✅ | Webhook middleware built but not deployed ⚠️
-
-**Architecture docs:** See [ARCHITECTURE.md](../ARCHITECTURE.md) for v2 separation plan
-
-**Task tracking:** See [TODO.md](../TODO.md) for active work
-
----
-
-## 🧱 Coding Style Rules
-
-### **Language & Syntax**
-- ✅ Use **ES Modules** (`import`/`export`) — NO CommonJS (`require`)
-- ✅ Use **async/await** — NO raw `.then()` chains
-- ✅ Use **node-fetch** (ESM version) for all HTTP requests
-- ✅ Use **descriptive variable names** (e.g., `coordinates` not `coords`)
-
-### **⚡ Vercel Deployment Rules (CRITICAL)**
-- ❌ **NEVER use Express.js** in `/api/*.js` files — Vercel uses serverless functions
-- ✅ **ALWAYS export a default handler function**: `export default async function handler(req, res) { ... }`
-- ✅ Each `/api/*.js` file is an **isolated serverless function** (no shared state)
-- ✅ Access headers with `req.headers["header-name"]` (lowercase)
-- ✅ Access HTTP method with `req.method` (GET, POST, etc.)
-- ✅ Use `req.body` for parsed JSON (Vercel auto-parses)
-- ⚠️ **Express.js is ONLY for local development** (`dev-carrier-server.js`)
-- ⚠️ Never import from `dev-carrier-server.js` in production `/api/` files
-
-### **Emoji-Based Logging**
-Maintain consistent emoji logging throughout the codebase:
+**Module System:**
 ```javascript
-console.log("📨 Shipping rate request received")
-console.log("🧾 Sending StopSuite payload:", payload)
-console.log("🌐 StopSuite GET /routes/")
-console.log("✅ Success:", result)
-console.warn("⚠️ Warning: Falling back to default")
-console.error("❌ Error:", error.message)
-console.log("🔐 HMAC signature generated")
-console.log("📍 Geocoding address...")
-console.log("🚗 Creating driver action")
-```
-
-### **Error Handling**
-- ✅ Always use try/catch blocks for async operations
-- ✅ Log errors with context (request ID, address, etc.)
-- ✅ Gracefully fall back to Shopify defaults on failures
-- ✅ Never expose secrets in error messages
-
-Example:
-```javascript
-try {
-  const result = await geocodeAddress(address);
-  console.log("✅ Geocoded:", result);
-} catch (error) {
-  console.error("❌ Geocoding failed:", error.message);
-  return res.json({ rates: [] }); // Fallback to Shopify default
-}
-```
-
----
-
-## 🔒 Security Rules
-
-### **API Credentials**
-- ❌ **NEVER** hardcode API keys, secrets, or credentials
-- ✅ **ALWAYS** use `process.env.VARIABLE_NAME`
-- ✅ **ALWAYS** check for missing environment variables before making API calls
-
-Example:
-```javascript
-const API_KEY = process.env.STOPSUITE_API_KEY;
-if (!API_KEY) {
-  console.error("❌ Missing STOPSUITE_API_KEY");
-  return;
-}
-```
-
-### **HMAC Authentication**
-- ✅ **ALWAYS** use StopSuite's HMAC-SHA256 signing for Client API requests
-- ✅ Signature format: `METHOD|PATH|TIMESTAMP|NONCE|BODY`
-- ✅ Use `crypto.createHmac('sha256', SECRET_KEY)`
-
-### **Sensitive Data**
-- ❌ **NEVER** log full API responses containing customer data
-- ❌ **NEVER** commit `.env` files
-- ✅ Sanitize logs before committing code
-
----
-
-## 🧩 Code Organization
-
-### **Where to Add New Features**
-
-| Feature Type | Location | Example |
-|--------------|----------|---------|
-| New API endpoint | `/api/` | `api/new-endpoint.js` |
-| Webhook handler | `/api/webhooks/` | `api/webhooks/new-webhook.js` |
-| StopSuite utilities | `/lib/` | `lib/stopsuite-helper.js` |
-| Zone validation | `/api/` | `api/zone-validator.js` |
-| Dev/testing scripts | `/scripts/` | `scripts/test-feature.js` |
-| New city/partner | `/api/zones/` (future) | `api/zones/kc-validator.js` |
-
-### **Import Path Rules**
-- ✅ Use relative imports: `import { geocode } from '../lib/geocode.js'`
-- ✅ Always include `.js` extension in imports
-- ✅ Keep utilities in `/lib/`, endpoints in `/api/`, scripts in `/scripts/`
-- ⚠️ **CRITICAL:** Never import from `dev-carrier-server.js` in production `/api/` files
-  - Bad: `import { CONSTANT } from '../../dev-carrier-server.js'`
-  - Good: Define constants locally or in `/lib/` shared utilities
-
-### **Module Structure (Vercel Serverless)**
-```javascript
-// 1. Imports
+// ✅ CORRECT - Use ES Modules
 import fetch from 'node-fetch';
-import crypto from 'crypto';
+import { geocodeAddress } from '../lib/geocode.js';
 
-// 2. Constants (use process.env for secrets)
-const API_BASE = 'https://api.example.com';
-const API_KEY = process.env.MY_API_KEY;
-
-// 3. Helper functions
-function helperFunction() { ... }
-
-// 4. Main export (REQUIRED for Vercel serverless)
 export default async function handler(req, res) {
-  // Method check
+  // ... code
+}
+
+// ❌ WRONG - No CommonJS
+const fetch = require('node-fetch');
+module.exports = handler;
+```
+
+**Async/Await:**
+```javascript
+// ✅ CORRECT - Always use async/await
+async function fetchData() {
+  const data = await apiCall();
+  return data;
+}
+
+// ❌ WRONG - No raw .then() chains
+function fetchData() {
+  return apiCall().then(data => data);
+}
+```
+
+**HTTP Requests:**
+```javascript
+// ✅ CORRECT - Use node-fetch (ESM version)
+import fetch from 'node-fetch';
+const response = await fetch(url, options);
+
+// ❌ WRONG - Don't use axios or other libraries
+```
+
+---
+
+## ⚡ Vercel Serverless Function Rules
+
+### CRITICAL: Vercel Deployment Format
+
+All files in `/api/` must follow Vercel serverless function format:
+
+```javascript
+// ✅ CORRECT - Vercel serverless function format
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    // Your logic here
+    // ... handler code
     return res.status(200).json({ success: true });
   } catch (error) {
-    console.error('❌ Error:', error);
     return res.status(500).json({ error: error.message });
+  }
+}
+
+// ❌ WRONG - Express Router won't work in Vercel
+import express from 'express';
+const router = express.Router();
+router.post('/endpoint', handler);
+export default router;
+```
+
+### Request/Response Handling
+
+```javascript
+// ✅ CORRECT - Vercel provides req/res automatically
+export default async function handler(req, res) {
+  // Access headers
+  const apiKey = req.headers['x-api-key'];
+
+  // Access body (already parsed)
+  const data = req.body;
+
+  // Set headers
+  res.setHeader('Content-Type', 'application/json');
+
+  // Return response
+  return res.status(200).json({ result: data });
+}
+
+// ❌ WRONG - Don't use Express middleware
+app.use(express.json());  // Vercel handles this
+```
+
+---
+
+## 🔒 Security Best Practices
+
+### Environment Variables
+
+```javascript
+// ✅ CORRECT - Always use process.env
+const apiKey = process.env.STOPSUITE_API_KEY;
+const secretKey = process.env.STOPSUITE_SECRET_KEY;
+
+if (!apiKey || !secretKey) {
+  throw new Error('Missing required environment variables');
+}
+
+// ❌ WRONG - Never hardcode secrets
+const apiKey = 'pk_1234567890abcdef';
+```
+
+### HMAC Signature Verification
+
+```javascript
+// ✅ CORRECT - Always verify HMAC signatures
+import crypto from 'crypto';
+
+const hmacHeader = req.headers['x-shopify-hmac-sha256'];
+const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+
+const generatedHash = crypto
+  .createHmac('sha256', SHOPIFY_WEBHOOK_SECRET)
+  .update(body, 'utf8')
+  .digest('base64');
+
+if (generatedHash !== hmacHeader) {
+  return res.status(401).send('Unauthorized');
+}
+
+// ❌ WRONG - Don't skip verification
+// Just process req.body without checking signature
+```
+
+### Logging
+
+```javascript
+// ✅ CORRECT - Never log sensitive data
+console.log('Processing order:', order.id);
+console.log('Customer:', {
+  id: customer.id,
+  email: customer.email.replace(/(?<=.).(?=[^@]*?.@)/g, '*')  // Mask email
+});
+
+// ❌ WRONG - Don't log full objects with sensitive data
+console.log('Full order:', order);  // May contain payment info
+console.log('API Key:', apiKey);    // Never log secrets
+```
+
+---
+
+## 📝 Logging & Error Handling
+
+### Emoji-Based Logging Convention
+
+Use consistent emoji prefixes for log levels:
+
+```javascript
+// Request/response flow
+console.log('🌐 Making request to:', url);
+console.log('🧾 Payload:', payload);
+
+// Success
+console.log('✅ Request successful:', result);
+
+// Warnings/fallbacks
+console.warn('⚠️ Geocoding failed, falling back to defaults');
+
+// Errors
+console.error('❌ API error:', error.message);
+
+// Debugging
+console.log('🧩 Intermediate result:', data);
+console.log('🔍 Inspecting value:', value);
+
+// Testing
+console.log('🧪 Running test:', testName);
+```
+
+### Error Handling Pattern
+
+```javascript
+// ✅ CORRECT - Always try/catch with graceful fallbacks
+export default async function handler(req, res) {
+  const requestId = Date.now().toString();
+  console.log(`\n[${requestId}] 📨 Request received`);
+
+  try {
+    const result = await processRequest(req.body);
+    console.log(`[${requestId}] ✅ Success`);
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error(`[${requestId}] ❌ Error:`, error.message);
+    // Graceful fallback - don't expose internal errors
+    return res.status(500).json({
+      error: 'Internal server error',
+      requestId  // For debugging
+    });
+  }
+}
+
+// ❌ WRONG - Don't let errors crash
+async function handler(req, res) {
+  const result = await apiCall();  // Unhandled promise rejection
+  res.json(result);
+}
+```
+
+---
+
+## 🧩 File Organization
+
+### Module Structure
+
+```
+/api/                          # Vercel serverless functions
+  ├── health.js                # Simple functions (no subdirs)
+  ├── shipping-rates.js
+  ├── zone-validator.js
+  ├── webhooks/               # Grouped by feature
+  │   ├── order-created.js
+  │   └── stopsuite-complete.js
+  └── routes/
+      └── fetch-active.js
+
+/lib/                          # Shared utilities (not deployed)
+  ├── geocode.js               # Single-purpose modules
+  └── stopsuite-sync.js
+
+/scripts/                      # CLI tools & testing
+  ├── test-*.js                # Test scripts
+  ├── register-carrier.js      # Shopify admin scripts
+  ├── list-carriers.js
+  └── delete-carrier.js
+```
+
+### When to Create New Files
+
+```javascript
+// ✅ CORRECT - New API endpoint = new file in /api/
+// api/calculate-distance.js
+export default async function handler(req, res) {
+  // ...
+}
+
+// ✅ CORRECT - Shared logic = new file in /lib/
+// lib/distance-calculator.js
+export function calculateDistance(lat1, lng1, lat2, lng2) {
+  // ...
+}
+
+// ❌ WRONG - Don't put shared logic in /api/
+// api/utils.js  // Wrong location, should be /lib/utils.js
+```
+
+---
+
+## 🔄 StopSuite API Integration
+
+### HMAC Signature Generation
+
+```javascript
+// ✅ CORRECT - Always sign requests with HMAC
+import crypto from 'crypto';
+
+function generateSignature(method, path, body = '') {
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const nonce = crypto.randomUUID();
+
+  // Normalize path
+  let normalizedPath = path.startsWith('/api/client/')
+    ? path
+    : `/api/client${path.startsWith('/') ? path : `/${path}`}`;
+
+  if (!normalizedPath.endsWith('/')) normalizedPath += '/';
+
+  // Create signature
+  const message = `${method}|${normalizedPath}|${timestamp}|${nonce}|${body}`;
+  const signature = crypto
+    .createHmac('sha256', process.env.STOPSUITE_SECRET_KEY)
+    .update(message, 'utf8')
+    .digest('hex');
+
+  return { timestamp, nonce, signature };
+}
+
+// Use in request
+const { timestamp, nonce, signature } = generateSignature('POST', '/orders/', JSON.stringify(payload));
+const headers = {
+  'X-API-Key': process.env.STOPSUITE_API_KEY,
+  'X-Signature': signature,
+  'X-Timestamp': timestamp,
+  'X-Nonce': nonce,
+  'Content-Type': 'application/json',
+};
+```
+
+### API Request Pattern
+
+```javascript
+// ✅ CORRECT - Standard StopSuite request pattern
+async function stopSuiteRequest(method, path, bodyObj = null) {
+  const body = bodyObj ? JSON.stringify(bodyObj) : '';
+  const { timestamp, nonce, signature } = generateSignature(method, path, body);
+
+  const url = `${STOPSUITE_BASE_URL}${path.replace(/^\/+/, '')}`;
+
+  console.log(`\n🌐 StopSuite ${method} ${url}`);
+  if (body) console.log('📦 Body:', body);
+
+  const response = await fetch(url, {
+    method,
+    headers: {
+      'X-API-Key': process.env.STOPSUITE_API_KEY,
+      'X-Signature': signature,
+      'X-Timestamp': timestamp,
+      'X-Nonce': nonce,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+    body: body || undefined,
+  });
+
+  const text = await response.text();
+
+  try {
+    const json = JSON.parse(text);
+    console.log(`✅ StopSuite responded (${response.status})`, json);
+    return json;
+  } catch {
+    console.warn(`⚠️ Non-JSON response (${response.status})`, text.slice(0, 200));
+    return { raw: text, status: response.status };
   }
 }
 ```
 
-**❌ WRONG (Express pattern - will FAIL on Vercel):**
+---
+
+## 🎯 Shopify CarrierService Rules
+
+### Rate Response Format
+
 ```javascript
-import express from 'express';
-const router = express.Router();
-router.post('/endpoint', (req, res) => { ... });
-export default router; // ❌ FAILS on Vercel
+// ✅ CORRECT - Return proper Shopify rate format
+return res.json({
+  rates: [
+    {
+      service_name: 'Carbon Negative Local Delivery',
+      service_code: 'CARBON_NEGATIVE_LOCAL',
+      total_price: '499',  // String, in cents
+      currency: 'USD',
+      min_delivery_date: '2025-11-06',  // ISO date format
+      max_delivery_date: '2025-11-07',
+    },
+  ],
+});
+
+// Fallback to Shopify defaults
+return res.json({ rates: [] });  // Empty array, not null
+
+// ❌ WRONG - Invalid format
+return res.json({
+  rates: [{
+    name: 'Delivery',     // Wrong key (should be service_name)
+    price: 4.99,          // Wrong type (should be string in cents)
+    total_price: '$4.99', // Wrong format (no $ sign)
+  }],
+});
 ```
 
-**✅ CORRECT (Vercel serverless pattern):**
+### Cache Control Headers
+
 ```javascript
-export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end();
-  // ... your logic
-  return res.status(200).json({ success: true });
-}
+// ✅ CORRECT - Prevent Shopify from merging rates
+res.setHeader('Cache-Control', 'no-store');
+res.setHeader('X-Shopify-Carrier-Exclusive', 'true');
+
+return res.json({ rates: [...] });
 ```
 
 ---
 
 ## 🧪 Testing Guidelines
 
-### **Before Committing**
-- ✅ Test carrier service endpoint locally: `npm run dev`
-- ✅ Test StopSuite integration: `npm run test:order`
-- ✅ Test product fetching: `npm run test:products`
-- ✅ Check for console errors and warnings
-- ✅ Verify ngrok tunnel works with Shopify
+### Test File Naming
 
-### **When Adding New Endpoints**
-- ✅ Add corresponding test script in `/scripts/` (e.g., `scripts/test-new-feature.js`)
-- ✅ Add npm script in `package.json` for easy access
-- ✅ Document in README.md under "API Endpoints"
-- ✅ Update TODO.md if not deployed yet
+```
+scripts/
+  ├── test-products.js       # test-*.js pattern
+  ├── test-shoporder.js
+  └── test-carrier.js
 
-### **Utility Scripts**
-All development and testing scripts are located in `/scripts/`:
-- `npm run carrier:list` - List Shopify carrier services
-- `npm run carrier:register` - Register carrier with Shopify
-- `npm run carrier:delete <ID>` - Delete carrier service by ID
-- `npm run test:order` - Test StopSuite order creation
-- `npm run test:products` - Test StopSuite product fetching
+__tests__/                   # For unit tests (when added)
+  ├── geocode.test.js
+  └── zone-validator.test.js
+```
 
----
+### Test Script Pattern
 
-## 🚨 Important Constraints
+```javascript
+// ✅ CORRECT - Self-contained test scripts
+import { stopSuiteRequest } from '../lib/stopsuite-sync.js';
 
-### **StopSuite APIs**
-This project integrates with **TWO separate StopSuite APIs:**
+console.log('🧪 Testing StopSuite product API...');
 
-1. **Zone Validation API** (used by carrier service)
-   - Base: `https://demo4.stopsuite.com/api/check-service-area/`
-   - No HMAC required
-   - Used in: `api/zone-validator.js`
-
-2. **Client API** (used by order middleware)
-   - Base: `https://demo4.stopsuite.com/api/client/`
-   - HMAC-SHA256 required
-   - Used in: `lib/stopsuite-sync.js`, `api/routes/fetch-active.js`
-
-**See [ARCHITECTURE.md](../ARCHITECTURE.md) for complete endpoint documentation.**
-
-### **Vercel Deployment**
-- ✅ All `/api/*.js` files are **serverless functions** (NOT Express routes)
-- ✅ Must export `export default async function handler(req, res) { ... }`
-- ✅ 10-second timeout limit (must respond quickly)
-- ✅ Each function is isolated (no shared state between requests)
-- ✅ Environment variables configured via `vercel env add`
-- ❌ **DO NOT use Express.js** in `/api/` files (only in `dev-carrier-server.js` for local dev)
-
-### **Future Architecture**
-- 🔮 v2 will split into two services: `enzy-rates` and `enzy-ops`
-- 🔮 Keep code modular to facilitate future separation
-- 🔮 See [ARCHITECTURE.md](../ARCHITECTURE.md) for migration plan
+(async () => {
+  try {
+    const res = await stopSuiteRequest('GET', '/shop-products/');
+    console.log('✅ Products:', res);
+  } catch (err) {
+    console.error('❌ Test failed:', err.message);
+    process.exit(1);
+  }
+})();
+```
 
 ---
 
-## ✅ Quick Checklist for New Code
+## 📦 Dependencies Management
 
-Before committing new code, verify:
+### Package Installation
 
-- [ ] Uses ES Modules (`import`/`export`)
-- [ ] Uses async/await (no `.then()`)
-- [ ] **Uses Vercel serverless pattern** (NO Express.js in `/api/` files)
-- [ ] **Exports `handler(req, res)` function** for all `/api/*.js` files
-- [ ] Includes emoji-based logging
-- [ ] No hardcoded secrets (uses `process.env`)
-- [ ] Proper error handling with try/catch
-- [ ] HMAC signing for StopSuite Client API calls
-- [ ] Follows existing file organization
-- [ ] Tested locally with `npm run dev` or similar
-- [ ] **Tested on Vercel** after deployment (`vercel --prod`)
-- [ ] Updated README.md if adding new endpoint
-- [ ] Updated TODO.md if feature isn't deployed yet
+```bash
+# ✅ CORRECT - Use npm
+npm install package-name
+
+# ❌ WRONG - Don't use yarn or pnpm (inconsistent with project)
+yarn add package-name
+```
+
+### Adding New Dependencies
+
+**Before adding a new dependency, ask:**
+1. Is this needed or can I use built-in Node.js modules?
+2. Does this work with ES Modules?
+3. Does this work in Vercel serverless environment?
+4. Is this actively maintained?
+
+```javascript
+// ✅ CORRECT - Minimal dependencies
+import crypto from 'crypto';    // Built-in
+import fetch from 'node-fetch'; // ESM-compatible
+
+// Consider before adding
+import axios from 'axios';      // Do we need this? node-fetch works fine
+import lodash from 'lodash';    // Do we need the whole library? Use built-ins
+```
 
 ---
 
-## 📚 Additional Resources
+## 🚫 Common Mistakes to Avoid
 
-- **[README.md](../README.md)** - Complete project documentation
-- **[ARCHITECTURE.md](../ARCHITECTURE.md)** - API details & v2 separation plan
-- **[TODO.md](../TODO.md)** - Active tasks & roadmap
+### Don't Use Express Middleware in Vercel Functions
+
+```javascript
+// ❌ WRONG
+import express from 'express';
+const app = express();
+app.use(express.json());
+export default app;
+
+// ✅ CORRECT
+export default async function handler(req, res) {
+  // Vercel handles body parsing
+  const data = req.body;
+}
+```
+
+### Don't Forget Error Handling
+
+```javascript
+// ❌ WRONG
+const data = await apiCall();
+return res.json(data);
+
+// ✅ CORRECT
+try {
+  const data = await apiCall();
+  return res.json(data);
+} catch (error) {
+  console.error('❌ API call failed:', error.message);
+  return res.status(500).json({ error: 'Service unavailable' });
+}
+```
+
+### Don't Expose Internal Errors
+
+```javascript
+// ❌ WRONG - Exposes stack traces
+catch (error) {
+  return res.status(500).json({ error: error.stack });
+}
+
+// ✅ CORRECT - Generic error message
+catch (error) {
+  console.error('❌ Internal error:', error);
+  return res.status(500).json({
+    error: 'Internal server error',
+    requestId: req.headers['x-request-id']
+  });
+}
+```
 
 ---
 
-**Remember:** This is a production service handling real customer checkouts. Code quality, reliability, and security are critical! 🚀
+## 🔗 Related Documentation
+
+- **[README.md](../README.md)** - Project setup and overview
+- **[TODO.md](../TODO.md)** - Remaining work
+- **[ARCHITECTURE.md](../ARCHITECTURE.md)** - Future separation plan
+
+---
+
+## 📝 Documentation Standards
+
+### Code Comments
+
+```javascript
+// ✅ CORRECT - Comment complex logic, not obvious code
+// Calculate distance using Haversine formula
+const distance = calculateHaversine(lat1, lng1, lat2, lng2);
+
+// Retry with exponential backoff (3 attempts max)
+for (let i = 0; i < 3; i++) {
+  try {
+    return await apiCall();
+  } catch (error) {
+    if (i === 2) throw error;
+    await sleep(Math.pow(2, i) * 1000);
+  }
+}
+
+// ❌ WRONG - Obvious comments add no value
+// Set variable to 1
+const count = 1;
+
+// Call function
+doSomething();
+```
+
+### Function Documentation
+
+```javascript
+/**
+ * Geocode an address to lat/lng coordinates
+ * @param {string} address - Full address string
+ * @returns {Promise<{lat: number, lng: number}|null>} Coordinates or null if not found
+ */
+export async function geocodeAddress(address) {
+  // ... implementation
+}
+```
+
+---
+
+**Summary:** Follow these guidelines to ensure code consistency, Vercel compatibility, and maintainability. When in doubt, look at existing code patterns in this project.

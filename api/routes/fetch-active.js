@@ -1,9 +1,8 @@
 // /api/routes/fetch-active.js
 import fetch from "node-fetch";
 import crypto from "crypto";
+import { STOPSUITE_BASE_URL } from "../../dev-carrier-server.js";
 
-// ✅ Production-ready: Define constant locally instead of importing from dev server
-const STOPSUITE_BASE_URL = "https://demo4.stopsuite.com/api/client/";
 const API_KEY = process.env.STOPSUITE_API_KEY;
 const SECRET_KEY = process.env.STOPSUITE_SECRET_KEY;
 
@@ -27,18 +26,6 @@ function signStopSuiteRequest(method, path, body = "") {
 }
 
 export default async function fetchActiveRoutes(req, res) {
-  // Check for required environment variables
-  if (!API_KEY || !SECRET_KEY) {
-    console.error("❌ Missing StopSuite credentials");
-    return res.status(500).json({
-      error: "Server configuration error: Missing API credentials",
-      details: {
-        hasApiKey: !!API_KEY,
-        hasSecretKey: !!SECRET_KEY
-      }
-    });
-  }
-
   try {
     // --- STEP 1: Fetch route list ---
     const { signature, timestamp, nonce } = signStopSuiteRequest("GET", "/routes/");

@@ -1,388 +1,382 @@
-# Architecture & Future Project Separation Plan
+# Architecture - Future Service Separation Plan
 
-> **⚠️ IMPORTANT:** This document describes the **FUTURE** (v2+) architecture plan, NOT current problems to fix.
+**Planning Document for v2 Microservices Architecture**
+
+> ⚠️ **IMPORTANT:** This document describes a **FUTURE** architecture plan, NOT current problems.
 >
-> **For v1:** The unified architecture is INTENTIONAL and CORRECT. Don't split anything yet!
+> **Current State (v1):** Unified monolith architecture is INTENTIONAL and CORRECT for MVP.
 >
-> **When to read this:** When planning v2, multi-city expansion, or experiencing performance issues.
+> **When to Implement:** When experiencing performance issues, scaling needs, or multi-city expansion.
+
+For current project info, see [README.md](./README.md)
+For immediate work, see [TODO.md](./TODO.md)
 
 ---
 
-## 🏗️ **Current State: Unified v1 Architecture (Intentional)**
+## 🎯 Purpose of This Document
 
-Currently, this project contains **TWO distinct services** in one codebase BY DESIGN:
-
-1. **Carrier Service** - Lightweight, high-frequency rate calculator (CRITICAL for checkout)
-2. **Order Middleware** - Complex, low-frequency order sync system (NICE-TO-HAVE for automation)
-
-### **📡 Two Different StopSuite APIs**
-
-This project integrates with **two separate StopSuite API systems:**
-
-**1. Zone Validation API** (Used by Carrier Service)
-- Base URL: `https://demo4.stopsuite.com/api/check-service-area/`
-- Purpose: Fast zone validation (lat/lng → inside/outside service area)
-- Endpoint: `POST /api/check-service-area/`
-- Used by: `api/zone-validator.js`
-
-**2. Client API** (Used by Order Middleware)
-- Base URL: `https://demo4.stopsuite.com/api/client/`
-- Purpose: Full order management (customers, locations, orders, routes)
-- Authentication: HMAC-SHA256 signing required
-- Used by: `lib/stopsuite-sync.js`, `api/routes/fetch-active.js`, `api/webhooks/*`
+This document exists to:
+1. **Document the rationale** for eventually splitting into microservices
+2. **Provide a roadmap** for when and how to separate services
+3. **Prevent premature optimization** by clearly stating when NOT to split
+4. **Guide future developers** when the time comes to scale
 
 ---
 
-## 🎯 **Why Separate Into Two Projects?**
+## 🏗️ Current v1 Architecture (Unified - Correct for Now)
 
-### **Performance Requirements**
-- **Carrier Service**: Must respond in <2 seconds (Shopify timeout constraint)
-- **Order Middleware**: Can take 5-10+ seconds (async background processing)
+### Why Unified is the Right Choice Now
 
-### **Scaling Needs**
-- **Carrier Service**: High frequency reads (every checkout = API call)
-- **Order Middleware**: Low frequency writes (only when orders are placed)
+The current unified architecture combines both "Rates" (checkout logic) and "Ops" (order sync) in one codebase. This is **intentionally correct** for v1 because:
 
-### **Reliability Isolation**
-- **Carrier Service**: CRITICAL - if it fails, customers can't checkout
-- **Order Middleware**: OPTIONAL - if it fails, manual order entry still works
-- Webhook failures shouldn't crash or slow down the critical carrier service
+✅ **Faster to market** - Single deployment, single codebase
+✅ **Easier to debug** - All logs in one place, single Vercel project
+✅ **Simpler operations** - One `.env`, one ngrok tunnel, one monitoring dashboard
+✅ **Lower overhead** - No inter-service communication, no version sync issues
+✅ **Carrier service is fast enough** - Well under 2-second Shopify timeout
+✅ **Order sync not critical yet** - Manual entry works fine while testing
+✅ **Low traffic volume** - No performance or scaling issues
 
-### **Deployment Constraints**
-- **Vercel Serverless Functions**: 10-second timeout limit
-- **Carrier Service**: Fast enough to stay under timeout easily
-- **Order Middleware**: Multi-step sync might exceed timeout (needs container deployment)
-
-### **Development & Debugging**
-- Clearer separation of concerns
-- Easier to debug issues (carrier vs order sync problems are separate)
-- Independent versioning and deployment cycles
-- Different teams can own different services
+### Current Structure
+```
+enzy-delivery-app (v1 - Unified)
+├── api/
+│   ├── shipping-rates.js         # Rates: Checkout logic
+│   ├── zone-validator.js          # Rates: Zone validation
+│   ├── webhooks/
+│   │   ├── order-created.js       # Ops: Order sync
+│   │   └── stopsuite-complete.js  # Ops: Fulfillment
+│   └── routes/
+│       └── fetch-active.js        # Ops: Route management
+└── lib/
+    ├── geocode.js                 # Rates: Geocoding
+    └── stopsuite-sync.js          # Ops: StopSuite API client
+```
 
 ---
 
-## 📦 **Planned Project Split**
+## 🚨 When to Split (Trigger Conditions)
 
-### **Project 1: `enzy-delivery-carrier-service` (Keep Current - CRITICAL)**
+### DO NOT split until you experience one or more of these:
 
-#### **Purpose:**
-Shopify Carrier Service - provides dynamic delivery rates at checkout based on customer address and StopSuite service zones.
+1. **Performance Issues**
+   - Carrier service response time > 1.5 seconds consistently
+   - Webhook processing blocking carrier service
+   - Vercel serverless timeout issues (>10 seconds)
 
-**This is the CORE feature** - without this, customers can't see delivery options.
+2. **Scaling Needs**
+   - Order volume > 1000/day
+   - Webhook processing queue backing up
+   - Need independent scaling for different components
 
-#### **Endpoints:**
+3. **Multi-City Expansion**
+   - Supporting 3+ cities/partners
+   - Different rate logic per region
+   - Geographic distribution requirements
+
+4. **Team Growth**
+   - Multiple teams working on different components
+   - Deployment conflicts between features
+   - Need for independent release cycles
+
+5. **Reliability Requirements**
+   - Webhook failures affecting carrier service
+   - Need circuit breakers between components
+   - SLA requirements for different endpoints
+
+---
+
+## 📦 Proposed v2 Architecture (Two Services)
+
+When the time comes, split into:
+
+### Service 1: `enzy-delivery-carrier-service`
+**Purpose:** Shopify Carrier Service - Calculate delivery rates at checkout
+
+**Critical Path:** YES - Customer-facing, must be fast and reliable
+
+**Performance Target:** < 1 second response time
+
+**Scaling:** High frequency, scales with checkout traffic
+
+**Components:**
 ```
-POST /api/shipping-rates     (Shopify calls during checkout)
-GET  /health                 (Health check / uptime monitoring)
+enzy-delivery-carrier-service/
+├── api/
+│   ├── shipping-rates.js     # Main endpoint
+│   ├── zone-validator.js      # Zone validation
+│   └── health.js              # Health check
+└── lib/
+    └── geocode.js             # Google Maps geocoding
 ```
 
-#### **Files to Keep:**
-```
-/api/
-  ├── shipping-rates.js    ← Main carrier service endpoint
-  ├── zone-validator.js    ← StopSuite zone validation
-  └── health.js            ← Health check
+**Dependencies:**
+- Google Maps Geocoding API
+- StopSuite Zone Validation API (`/check-service-area/`)
 
-/lib/
-  └── geocode.js           ← Google Maps geocoding
-
-/ (root)
-  └── test-carrier-service.js  ← Component tests
-```
-
-#### **Dependencies:**
-- **Google Maps Geocoding API**
-  - Purpose: Address → lat/lng conversion
-  - Used by: `lib/geocode.js`
-
-- **StopSuite Zone Validation API**
-  - Base URL: `https://demo4.stopsuite.com/api/check-service-area/`
-  - Endpoint: `POST /api/check-service-area/`
-  - Purpose: Validate if coordinates are within service area polygon
-  - Used by: `api/zone-validator.js`
-
-#### **Deployment:**
-- **Platform**: Vercel (serverless functions)
-- **Performance Target**: <2 seconds response time
-- **Scaling**: Auto-scales with Shopify checkout traffic
-
-#### **Environment Variables:**
+**Environment Variables:**
 ```env
 STOPSUITE_API_KEY=pk_xxxxx
 STOPSUITE_SECRET_KEY=sk_xxxxx
 GOOGLE_MAPS_API_KEY=AIza...
 ```
 
+**Deployment:**
+- Platform: Vercel Serverless Functions
+- Auto-scaling: Yes
+- Monitoring: Critical (affects revenue)
+
 ---
 
-### **Project 2: `enzy-shopify-stopsuite-middleware` (Create Later - OPTIONAL AUTOMATION)**
+### Service 2: `enzy-shopify-stopsuite-middleware`
+**Purpose:** Bidirectional order sync between Shopify and StopSuite
 
-#### **Purpose:**
-Bidirectional Shopify ↔ StopSuite order sync - automates order entry and fulfillment updates.
+**Critical Path:** NO - Background processing, can retry/queue
 
-**This is a NICE-TO-HAVE feature** - it automates manual processes but isn't required for the business to function.
+**Performance Target:** < 10 seconds (async acceptable)
 
-#### **Endpoints:**
+**Scaling:** Low frequency, scales with order volume
+
+**Components:**
 ```
-POST /webhooks/order-created         (Shopify → StopSuite)
-     → Automatically creates orders in StopSuite when customer checks out
-     → Syncs: Customer → Location → Shop Order → Route assignment
-
-POST /webhooks/stopsuite-complete    (StopSuite → Shopify)
-     → Automatically marks Shopify orders as fulfilled when driver completes delivery
-     → Updates Shopify order status → Triggers customer email notification
-```
-
-#### **CLI Tools:**
-All utility scripts are in the `/scripts/` folder for easy organization:
-```
-scripts/
-  ├── README.md                 ← Documentation for all scripts
-  ├── register-carrier.js       ← Register carrier service with Shopify
-  ├── list-carriers.js          ← List all registered carrier services
-  ├── delete-carrier.js         ← Remove carrier services (now requires ID argument)
-  ├── test-products.js          ← Test StopSuite product fetching
-  └── test-shoporder.js         ← Test StopSuite order creation
+enzy-shopify-stopsuite-middleware/
+├── api/
+│   ├── webhooks/
+│   │   ├── order-created.js       # Shopify → StopSuite
+│   │   └── stopsuite-complete.js  # StopSuite → Shopify
+│   └── routes/
+│       └── fetch-active.js        # Route management
+├── lib/
+│   └── stopsuite-sync.js          # StopSuite Client API
+└── scripts/
+    ├── register-carrier.js        # Utility scripts
+    ├── list-carriers.js
+    ├── delete-carrier.js
+    ├── test-products.js
+    └── test-shoporder.js
 ```
 
-#### **Files to Move:**
-```
-/api/
-  ├── webhooks/
-  │   ├── order-created.js         ← Shopify webhook handler
-  │   └── stopsuite-complete.js    ← StopSuite webhook handler
-  └── routes/
-      └── fetch-active.js          ← StopSuite route fetcher (diagnostic tool)
+**Dependencies:**
+- Shopify Admin API (orders, fulfillments)
+- StopSuite Client API (customers, locations, orders, routes)
+- Optional: Database for sync tracking & retries
+- Optional: Redis/BullMQ for job queue
 
-/lib/
-  └── stopsuite-sync.js            ← Order sync logic (customer, location, shop order)
-
-/scripts/                          ← All scripts already organized here ✅
-  ├── README.md                    ← Documentation
-  ├── register-carrier.js          ← CLI: Register carrier
-  ├── list-carriers.js             ← CLI: List carriers
-  ├── delete-carrier.js            ← CLI: Delete carrier
-  ├── test-products.js             ← Product testing
-  └── test-shoporder.js            ← Order sync testing
-```
-
-#### **Dependencies:**
-- **Shopify Admin API**
-  - Purpose: Read/write orders, manage fulfillments
-  - Used by: `api/webhooks/order-created.js`, `api/webhooks/stopsuite-complete.js`
-
-- **StopSuite Client API**
-  - Base URL: `https://demo4.stopsuite.com/api/client/`
-  - Endpoints used:
-    - `POST /customers/create/` - Create customer account
-    - `POST /customer-locations/create/` - Create delivery location
-    - `POST /shop-orders/create/` - Create shop order
-    - `GET /routes/?date_after={date}&date_before={date}` - Fetch routes
-    - `GET /routes/{id}/` - Fetch route details
-    - `POST /driver-actions/create/` - Assign order to route
-    - `GET /services/` - List available services (testing)
-  - Used by: `lib/stopsuite-sync.js`, `api/routes/fetch-active.js`
-
-- **Database (Optional - Future Enhancement)**
-  - Purpose: Track sync status and implement retry logic
-  - Options: PostgreSQL, MongoDB, or similar
-
-#### **Deployment:**
-- **Platform**: Vercel/Railway/Render (serverless or container)
-- **Performance**: Can be slower (5-10+ seconds) - async background work
-- **Scaling**: Lower traffic volume than carrier service
-
-#### **Environment Variables:**
+**Environment Variables:**
 ```env
-# StopSuite API
 STOPSUITE_API_KEY=pk_xxxxx
 STOPSUITE_SECRET_KEY=sk_xxxxx
-
-# Shopify API
 SHOPIFY_ADMIN_API_KEY=shpat_xxxxx
 SHOPIFY_STORE_URL=myshop.myshopify.com
 SHOPIFY_WEBHOOK_SECRET=xxxxx
-
-# Optional: Database for sync tracking
-DATABASE_URL=postgresql://...
+SHOPIFY_ADMIN_URL=https://myshop.myshopify.com/admin
+SHOPIFY_ADMIN_TOKEN=shpat_xxxxx
+SHOPIFY_LOCATION_ID=xxxxx
+DATABASE_URL=postgresql://...  # Optional
+REDIS_URL=redis://...           # Optional
 ```
+
+**Deployment:**
+- Platform: Vercel/Railway/Render (container preferred)
+- Auto-scaling: Optional
+- Monitoring: Important (affects operations)
 
 ---
 
-## 📋 **Migration Checklist (When Ready to Split)**
+## 🔄 Data Flow After Separation
 
-### **Phase 1: Preparation**
+### Checkout Flow (Carrier Service)
+```
+Customer enters address at checkout
+    ↓
+Shopify → POST carrier-service.vercel.app/api/shipping-rates
+    ↓
+Carrier Service:
+  - Geocode address (Google Maps)
+  - Validate zone (StopSuite API)
+  - Return rate or empty array
+    ↓
+Shopify displays delivery options
+    ↓
+Customer completes purchase
+```
+
+### Order Sync Flow (Middleware)
+```
+Customer completes purchase
+    ↓
+Shopify → POST middleware.vercel.app/webhooks/order-created
+    ↓
+Middleware:
+  - Verify HMAC signature
+  - Enqueue job (if using queue)
+  - Create customer in StopSuite
+  - Create location in StopSuite
+  - Create shop order in StopSuite
+  - Assign to route (optional)
+    ↓
+Driver sees order in StopSuite app
+    ↓
+Driver completes delivery
+    ↓
+StopSuite → POST middleware.vercel.app/webhooks/stopsuite-complete
+    ↓
+Middleware:
+  - Verify HMAC signature
+  - Mark Shopify order as fulfilled
+    ↓
+Customer receives fulfillment email
+```
+
+**Key Difference:** Services communicate ONLY through webhooks and API calls, not direct function imports.
+
+---
+
+## 📋 Migration Checklist
+
+### Phase 1: Preparation
 - [ ] Create new repository: `enzy-shopify-stopsuite-middleware`
-- [ ] Set up new Vercel/Railway project for middleware
-- [ ] Copy shared dependencies (package.json, .env.example)
-- [ ] Update both README.md files with clear purpose statements
+- [ ] Set up new deployment target (Vercel/Railway/Render)
+- [ ] Copy shared dependencies (`package.json`, `.env.example`)
+- [ ] Set up separate monitoring/logging for each service
 
-### **Phase 2: File Migration**
-- [ ] **Move to middleware project:**
-  - `lib/stopsuite-sync.js`
+### Phase 2: Code Migration
+- [ ] **Move to middleware:**
   - `api/webhooks/order-created.js`
   - `api/webhooks/stopsuite-complete.js`
   - `api/routes/fetch-active.js`
-  - `scripts/register-carrier.js`
-  - `scripts/list-carriers.js`
-  - `scripts/delete-carrier.js`
-  - `scripts/test-products.js`
-  - `scripts/test-shoporder.js`
+  - `lib/stopsuite-sync.js`
+  - `/scripts/*` folder
 
-- [ ] **Keep in carrier service project:**
+- [ ] **Keep in carrier service:**
   - `api/shipping-rates.js`
   - `api/zone-validator.js`
   - `api/health.js`
   - `lib/geocode.js`
-  - `scripts/` (for now - useful for carrier registration)
 
-- [ ] **Delete from carrier service project:**
+- [ ] **Delete from carrier service:**
   - `api/webhooks/` directory
-  - `api/routes/` directory (move fetch-active.js to middleware)
+  - `api/routes/` directory
   - `lib/stopsuite-sync.js`
-  - `scripts/test-*.js` files (move to middleware)
+  - `/scripts/*` (moved to middleware)
 
-**Note:** The `/scripts/` folder contains utilities useful for both projects (carrier registration), so consider keeping or duplicating as needed.
-
-### **Phase 3: Code Updates**
+### Phase 3: Code Updates
 - [ ] Update import paths in middleware project
 - [ ] Remove webhook routes from `dev-carrier-server.js`
-- [ ] Create new `dev-middleware-server.js` in middleware project
-- [ ] Update package.json scripts in both projects
-- [ ] Simplify carrier service to only handle rate calculations
+- [ ] Create new `dev-middleware-server.js`
+- [ ] Update `package.json` scripts in both projects
+- [ ] Simplify carrier service dependencies
 
-### **Phase 4: Documentation**
-- [ ] Update CLAUDE.md in carrier service (remove middleware references)
-- [ ] Create new CLAUDE.md in middleware project
-- [ ] Update README.md in both projects
-- [ ] Update TODO.md in both projects
-- [ ] Create ARCHITECTURE.md in middleware project (if needed)
+### Phase 4: Documentation
+- [ ] Update `README.md` in carrier service (remove middleware references)
+- [ ] Create new `README.md` in middleware project
+- [ ] Update `.claude/CLAUDE.md` in both projects
+- [ ] Update `TODO.md` in both projects
+- [ ] Archive/update this `ARCHITECTURE.md`
 
-### **Phase 5: Deployment**
+### Phase 5: Deployment
 - [ ] Deploy carrier service independently
-- [ ] Test carrier service endpoints in production
+- [ ] Test carrier service in production (Shopify integration)
 - [ ] Deploy middleware service independently
-- [ ] Test webhook endpoints in staging
-- [ ] Update environment variables in both Vercel projects
+- [ ] Test webhooks in staging environment
+- [ ] Update Shopify webhook URLs to middleware service
+- [ ] Monitor both services for 24 hours
 
-### **Phase 6: Integration**
-- [ ] Register Shopify webhook pointing to middleware URL
-- [ ] Register StopSuite webhook (if supported)
-- [ ] Test end-to-end order sync flow
-- [ ] Monitor logs for errors
-- [ ] Set up error alerting for both services
-
----
-
-## 🔄 **Data Flow After Separation**
-
-### **Checkout Flow (Carrier Service)**
-```
-Customer adds items to cart
-    ↓
-Proceeds to checkout
-    ↓
-Shopify → POST https://carrier-service.vercel.app/api/shipping-rates
-    ↓
-Carrier Service:
-  - Geocodes address via Google Maps
-  - Validates zone via StopSuite API
-  - Returns delivery rate
-    ↓
-Shopify displays "Carbon Negative Local Delivery" option
-    ↓
-Customer completes purchase
-```
-
-### **Order Sync Flow (Middleware)**
-```
-Customer completes purchase
-    ↓
-Shopify → POST https://middleware.vercel.app/webhooks/order-created
-    ↓
-Middleware:
-  - Verifies webhook signature
-  - Creates customer in StopSuite
-  - Creates customer location in StopSuite
-  - Creates shop order in StopSuite
-  - Assigns to driver route (optional)
-    ↓
-Driver sees delivery in StopSuite app
-    ↓
-Driver completes delivery
-    ↓
-StopSuite → POST https://middleware.vercel.app/webhooks/stopsuite-complete
-    ↓
-Middleware:
-  - Verifies webhook signature
-  - Marks Shopify order as fulfilled
-    ↓
-Customer receives delivery confirmation email from Shopify
-```
+### Phase 6: Verification
+- [ ] End-to-end test: Checkout → Order Sync → Fulfillment
+- [ ] Verify carrier service performance (< 1s response time)
+- [ ] Verify webhook processing (< 30s order sync)
+- [ ] Monitor error rates and logs
+- [ ] Set up alerting for both services
 
 ---
 
-## ⚡ **Benefits After Separation**
+## ⚡ Benefits After Separation
 
-### **For Carrier Service:**
+### For Carrier Service:
 ✅ Ultra-simple codebase - easier to maintain
 ✅ Guaranteed fast performance - no heavy sync logic
-✅ Independent scaling - scales with checkout traffic
+✅ Independent scaling - scales with checkout traffic only
 ✅ Reduced risk - fewer dependencies = fewer failure points
-✅ Easier debugging - logs only contain rate calculation
+✅ Easier debugging - logs only contain rate calculations
+✅ Smaller bundle size - faster cold starts
 
-### **For Middleware:**
-✅ Can use longer timeouts or containers if needed
+### For Middleware:
+✅ Can use longer timeouts (10+ seconds)
 ✅ Can add database for retry logic and sync tracking
-✅ Can add queue system (Redis/BullMQ) for reliability
+✅ Can implement job queue (Redis/BullMQ) for reliability
 ✅ Independent deployment - won't affect critical carrier service
 ✅ Can iterate faster without risking checkout functionality
+✅ Can add complex business logic without affecting performance
 
-### **For Development:**
+### For Development:
 ✅ Clear separation of concerns
 ✅ Different teams can own different repos
-✅ Easier onboarding (simpler codebases)
+✅ Easier onboarding - simpler, focused codebases
 ✅ Independent versioning (v1.0 carrier, v2.0 middleware)
 ✅ Can use different tech stacks if needed
+✅ Reduced merge conflicts
 
 ---
 
-## 🚨 **Important Notes**
+## 🚧 Potential Challenges
 
-### **When to Split:**
-- ✅ **Now**: If you have time and want clean architecture from the start
-- ✅ **Soon**: When StopSuite fixes their order creation API
-- ✅ **Later**: When manual order entry becomes too time-consuming
-- ⚠️ **Required**: If Vercel serverless timeouts become an issue
+### Communication Overhead
+**Challenge:** Services must communicate via webhooks/APIs instead of direct function calls
+**Mitigation:** Use well-defined contracts, version APIs carefully, implement retries
 
-### **Why v1 is Intentionally Unified (The Right Choice):**
-We're keeping them together for v1 because:
-- ✅ **Faster to market** - Single deployment, single codebase
-- ✅ **Easier to debug** - All logs in one place, single Vercel project
-- ✅ **Simpler operations** - One .env, one ngrok tunnel, one monitoring dashboard
-- ✅ **Lower overhead** - No inter-service communication, no version sync issues
-- ✅ **Carrier service is fast enough** - Well under 2-second Shopify timeout
-- ✅ **Order sync not critical yet** - Manual entry works fine while testing
+### Operational Complexity
+**Challenge:** Two services = two deployments, two monitoring dashboards, two `.env` files
+**Mitigation:** Use infrastructure-as-code (Terraform), centralized logging (Datadog/Sentry)
 
-**This unified approach is CORRECT for early-stage MVP.** Only split when you hit real scaling problems.
+### Debugging Distributed Systems
+**Challenge:** Tracing requests across services is harder
+**Mitigation:** Implement correlation IDs, distributed tracing (Jaeger/Zipkin)
 
-### **When to Definitely Separate:**
-You **must** separate when:
-- Order sync starts timing out (>10 seconds)
-- Webhook failures are affecting carrier service performance
-- You need to scale carrier service independently
-- Different teams need to own different parts
-- You want to add a database or queue system to middleware
+### Deployment Coordination
+**Challenge:** Changes that span both services require coordinated releases
+**Mitigation:** Maintain backward compatibility, use feature flags
+
+### Cost Increase
+**Challenge:** Two Vercel projects, potential database costs, monitoring costs
+**Mitigation:** Only split when revenue justifies increased operational costs
 
 ---
 
-## 📚 **References**
+## 🎯 Decision Framework
 
-- [Microservices vs Monolith](https://martinfowler.com/articles/microservices.html)
-- [Vercel Serverless Function Limits](https://vercel.com/docs/functions/serverless-functions/runtimes#max-duration)
+Use this decision tree when considering separation:
+
+```
+Are you experiencing performance issues?
+├─ YES → Is carrier service affected by webhook processing?
+│  ├─ YES → Split immediately
+│  └─ NO → Optimize unified service first
+└─ NO → Are you expanding to 3+ cities?
+   ├─ YES → Split for organizational clarity
+   └─ NO → Stay unified, revisit in 6 months
+```
+
+**Rule of Thumb:** If you're unsure whether to split, DON'T. The unified architecture is simpler and sufficient until you have concrete scaling problems.
+
+---
+
+## 📚 References
+
+- [Microservices Pattern](https://microservices.io/)
+- [Martin Fowler: Monolith First](https://martinfowler.com/bliki/MonolithFirst.html)
+- [Vercel Serverless Functions Limits](https://vercel.com/docs/functions/serverless-functions/runtimes#max-duration)
 - [Shopify Carrier Service API](https://shopify.dev/docs/api/admin-rest/latest/resources/carrierservice)
-- [Shopify Webhooks](https://shopify.dev/docs/apps/webhooks)
+- [Shopify Webhooks Best Practices](https://shopify.dev/docs/apps/webhooks/best-practices)
 
 ---
 
-*This architecture plan is designed to maximize reliability and performance while maintaining development velocity.*
+## 🔗 Related Documentation
+
+- **[README.md](./README.md)** - Current project setup and usage
+- **[TODO.md](./TODO.md)** - Immediate work and priorities
+- **[.claude/CLAUDE.md](./.claude/CLAUDE.md)** - Coding guidelines
+
+---
+
+**Remember:** This is a planning document. The unified v1 architecture is the correct choice for now. Only implement this separation when you hit real scaling problems or multi-city expansion.

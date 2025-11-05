@@ -6,22 +6,20 @@ const SHOPIFY_ADMIN_URL = process.env.SHOPIFY_ADMIN_URL;
 const SHOPIFY_ADMIN_TOKEN = process.env.SHOPIFY_ADMIN_TOKEN;
 
 /**
- * StopSuite → Shopify webhook
+ * StopSuite → Shopify webhook (Vercel Serverless Function)
  * Marks Shopify order fulfilled when driver marks delivery complete.
- *
- * ✅ Vercel-compatible serverless function (no Express.js)
  */
 export default async function handler(req, res) {
   // Only accept POST requests
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
     const hmacHeader = req.headers["x-signature"];
     const timestamp = req.headers["x-timestamp"];
     const nonce = req.headers["x-nonce"];
-    const body = JSON.stringify(req.body);
+    const body = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
 
     // ✅ Verify HMAC
     const expected = crypto
@@ -34,10 +32,11 @@ export default async function handler(req, res) {
       return res.status(401).send("Unauthorized");
     }
 
-    console.log("📦 StopSuite webhook received:", req.body);
+    const webhookData = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+    console.log("📦 StopSuite webhook received:", webhookData);
 
-    if (req.body?.status === "complete" && req.body?.external_reference) {
-      const shopifyOrderId = req.body.external_reference.replace("shopify_", "");
+    if (webhookData?.status === "complete" && webhookData?.external_reference) {
+      const shopifyOrderId = webhookData.external_reference.replace("shopify_", "");
 
       // ✅ Mark Shopify order fulfilled
       const url = `${SHOPIFY_ADMIN_URL}/orders/${shopifyOrderId}/fulfillments.json`;

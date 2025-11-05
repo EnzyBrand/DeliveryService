@@ -4,22 +4,20 @@ import { syncOrderToStopSuite } from "../../lib/stopsuite-sync.js";
 const SHOPIFY_WEBHOOK_SECRET = process.env.SHOPIFY_WEBHOOK_SECRET;
 
 /**
- * Shopify → StopSuite webhook
+ * Shopify → StopSuite webhook (Vercel Serverless Function)
  * Handles new orders and syncs them to StopSuite (customer, location, shop order, route)
- *
- * ✅ Vercel-compatible serverless function (no Express.js)
  */
 export default async function handler(req, res) {
   // Only accept POST requests
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
     const hmacHeader = req.headers["x-shopify-hmac-sha256"];
-    const body = JSON.stringify(req.body);
+    const body = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
 
-    console.log("📥 Raw webhook body received");
+    console.log("📥 Shopify webhook received");
     console.log("📦 Headers:", req.headers);
 
     // ✅ Verify Shopify HMAC
@@ -33,7 +31,7 @@ export default async function handler(req, res) {
       return res.status(401).send("Unauthorized");
     }
 
-    const order = req.body;
+    const order = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
     console.log(`🧾 Received new order ${order.name} (${order.id})`);
 
     await syncOrderToStopSuite(order);
