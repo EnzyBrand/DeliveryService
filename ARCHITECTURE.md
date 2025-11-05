@@ -15,6 +15,22 @@ Currently, this project contains **TWO distinct services** in one codebase BY DE
 1. **Carrier Service** - Lightweight, high-frequency rate calculator (CRITICAL for checkout)
 2. **Order Middleware** - Complex, low-frequency order sync system (NICE-TO-HAVE for automation)
 
+### **📡 Two Different StopSuite APIs**
+
+This project integrates with **two separate StopSuite API systems:**
+
+**1. Zone Validation API** (Used by Carrier Service)
+- Base URL: `https://demo4.stopsuite.com/api/check-service-area/`
+- Purpose: Fast zone validation (lat/lng → inside/outside service area)
+- Endpoint: `POST /api/check-service-area/`
+- Used by: `api/zone-validator.js`
+
+**2. Client API** (Used by Order Middleware)
+- Base URL: `https://demo4.stopsuite.com/api/client/`
+- Purpose: Full order management (customers, locations, orders, routes)
+- Authentication: HMAC-SHA256 signing required
+- Used by: `lib/stopsuite-sync.js`, `api/routes/fetch-active.js`, `api/webhooks/*`
+
 ---
 
 ## 🎯 **Why Separate Into Two Projects?**
@@ -56,8 +72,8 @@ Shopify Carrier Service - provides dynamic delivery rates at checkout based on c
 
 #### **Endpoints:**
 ```
-POST /api/shipping-rates  (Shopify calls during checkout)
-GET  /health              (Health check / uptime monitoring)
+POST /api/shipping-rates     (Shopify calls during checkout)
+GET  /health                 (Health check / uptime monitoring)
 ```
 
 #### **Files to Keep:**
@@ -75,8 +91,15 @@ GET  /health              (Health check / uptime monitoring)
 ```
 
 #### **Dependencies:**
-- Google Maps Geocoding API (address → lat/lng conversion)
-- StopSuite `/api/check-service-area/` endpoint (zone validation)
+- **Google Maps Geocoding API**
+  - Purpose: Address → lat/lng conversion
+  - Used by: `lib/geocode.js`
+
+- **StopSuite Zone Validation API**
+  - Base URL: `https://demo4.stopsuite.com/api/check-service-area/`
+  - Endpoint: `POST /api/check-service-area/`
+  - Purpose: Validate if coordinates are within service area polygon
+  - Used by: `api/zone-validator.js`
 
 #### **Deployment:**
 - **Platform**: Vercel (serverless functions)
@@ -111,33 +134,58 @@ POST /webhooks/stopsuite-complete    (StopSuite → Shopify)
 ```
 
 #### **CLI Tools:**
+All utility scripts are in the `/scripts/` folder for easy organization:
 ```
-register-carrier.js   ← Register carrier service with Shopify (one-time setup)
-list-carriers.js      ← List all registered carrier services
-delete-carrier.js     ← Remove carrier services
+scripts/
+  ├── README.md                 ← Documentation for all scripts
+  ├── register-carrier.js       ← Register carrier service with Shopify
+  ├── list-carriers.js          ← List all registered carrier services
+  ├── delete-carrier.js         ← Remove carrier services (now requires ID argument)
+  ├── test-products.js          ← Test StopSuite product fetching
+  └── test-shoporder.js         ← Test StopSuite order creation
 ```
 
 #### **Files to Move:**
 ```
-/api/webhooks/
-  ├── order-created.js         ← Shopify webhook handler
-  └── stopsuite-complete.js    ← StopSuite webhook handler
+/api/
+  ├── webhooks/
+  │   ├── order-created.js         ← Shopify webhook handler
+  │   └── stopsuite-complete.js    ← StopSuite webhook handler
+  └── routes/
+      └── fetch-active.js          ← StopSuite route fetcher (diagnostic tool)
 
 /lib/
-  └── stopsuite-sync.js        ← Order sync logic (customer, location, shop order)
+  └── stopsuite-sync.js            ← Order sync logic (customer, location, shop order)
 
-/ (root)
-  ├── register-carrier.js      ← CLI: Register carrier
-  ├── list-carriers.js         ← CLI: List carriers
-  ├── delete-carrier.js        ← CLI: Delete carrier
-  ├── test-products.js         ← Product testing
-  └── test-shoporder.js        ← Order sync testing
+/scripts/                          ← All scripts already organized here ✅
+  ├── README.md                    ← Documentation
+  ├── register-carrier.js          ← CLI: Register carrier
+  ├── list-carriers.js             ← CLI: List carriers
+  ├── delete-carrier.js            ← CLI: Delete carrier
+  ├── test-products.js             ← Product testing
+  └── test-shoporder.js            ← Order sync testing
 ```
 
 #### **Dependencies:**
-- Shopify Admin API (read/write orders, manage fulfillments)
-- StopSuite Client API (customers, locations, shop orders, routes)
-- Possibly a database for tracking sync status and retries (PostgreSQL/MongoDB)
+- **Shopify Admin API**
+  - Purpose: Read/write orders, manage fulfillments
+  - Used by: `api/webhooks/order-created.js`, `api/webhooks/stopsuite-complete.js`
+
+- **StopSuite Client API**
+  - Base URL: `https://demo4.stopsuite.com/api/client/`
+  - Endpoints used:
+    - `POST /customers/create/` - Create customer account
+    - `POST /customer-locations/create/` - Create delivery location
+    - `POST /shop-orders/create/` - Create shop order
+    - `GET /routes/?date_after={date}&date_before={date}` - Fetch routes
+    - `GET /routes/{id}/` - Fetch route details
+    - `POST /driver-actions/create/` - Assign order to route
+    - `GET /services/` - List available services (testing)
+  - Used by: `lib/stopsuite-sync.js`, `api/routes/fetch-active.js`
+
+- **Database (Optional - Future Enhancement)**
+  - Purpose: Track sync status and implement retry logic
+  - Options: PostgreSQL, MongoDB, or similar
 
 #### **Deployment:**
 - **Platform**: Vercel/Railway/Render (serverless or container)
@@ -174,24 +222,27 @@ DATABASE_URL=postgresql://...
   - `lib/stopsuite-sync.js`
   - `api/webhooks/order-created.js`
   - `api/webhooks/stopsuite-complete.js`
-  - `register-carrier.js`
-  - `list-carriers.js`
-  - `delete-carrier.js`
-  - `test-products.js`
-  - `test-shoporder.js`
+  - `api/routes/fetch-active.js`
+  - `scripts/register-carrier.js`
+  - `scripts/list-carriers.js`
+  - `scripts/delete-carrier.js`
+  - `scripts/test-products.js`
+  - `scripts/test-shoporder.js`
 
 - [ ] **Keep in carrier service project:**
   - `api/shipping-rates.js`
   - `api/zone-validator.js`
   - `api/health.js`
   - `lib/geocode.js`
-  - `test-carrier-service.js`
+  - `scripts/` (for now - useful for carrier registration)
 
 - [ ] **Delete from carrier service project:**
   - `api/webhooks/` directory
+  - `api/routes/` directory (move fetch-active.js to middleware)
   - `lib/stopsuite-sync.js`
-  - Carrier management CLI tools
-  - Middleware test files
+  - `scripts/test-*.js` files (move to middleware)
+
+**Note:** The `/scripts/` folder contains utilities useful for both projects (carrier registration), so consider keeping or duplicating as needed.
 
 ### **Phase 3: Code Updates**
 - [ ] Update import paths in middleware project

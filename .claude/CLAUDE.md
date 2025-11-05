@@ -1,266 +1,210 @@
-🧭 CLAUDE.md
+# 🧭 CLAUDE.md
 
-Guidance for AI Coding Assistants (Claude / ChatGPT / Replit Agent / Copilot)
+**AI Coding Assistant Guidelines for Enzy Delivery Middleware**
 
-This file provides architectural context and development rules for working on the Enzy Delivery Middleware — a unified Shopify ↔ StopSuite integration managing both checkout delivery rates and post-checkout order sync.
+This file contains coding style rules and development guidelines for AI assistants working on this project.
 
-🌍 Project Overview
+> **📖 For project details, architecture, and setup instructions, see [README.md](../README.md)**
 
-This repository implements the Enzy Delivery Middleware, a unified "Rates + Ops" service that:
+---
 
-✅ **Currently Deployed:** Calculates dynamic local compost delivery rates at checkout using Shopify's CarrierService API.
+## 🎯 Project Quick Reference
 
-⚠️ **Built, Not Deployed:** Automatic StopSuite shop order creation after checkout (webhook handlers exist but aren't active yet).
+**What this project does:** Shopify ↔ StopSuite integration for carbon-negative delivery rates
 
-It runs as a single Express app (Node.js, ES Modules) and can deploy serverlessly to Vercel, Railway, or Fly.io.
+**Current status:** v1 carrier service deployed ✅ | Webhook middleware built but not deployed ⚠️
 
-🚨 Current Deployment Status
+**Architecture docs:** See [ARCHITECTURE.md](../ARCHITECTURE.md) for v2 separation plan
 
-**What's LIVE in Production:**
-✅ Shopify CarrierService integration (`/api/shipping-rates`)
-✅ Google Maps geocoding
-✅ StopSuite zone validation
-✅ Health check endpoint
+**Task tracking:** See [TODO.md](../TODO.md) for active work
 
-**What's BUILT but NOT Deployed:**
-⚠️ Shopify webhook handlers (`/api/webhooks/`)
-⚠️ StopSuite order sync functionality
-⚠️ Automatic order creation
+---
 
-**Why:** For v1, we're focusing on the CRITICAL checkout flow. Order sync will be deployed when ready (likely as a separate service - see ARCHITECTURE.md).
+## 🧱 Coding Style Rules
 
-⚙️ Core Architecture
-🧱 Components
-File	Purpose	Status
-/api/shipping-rates.js	Shopify checkout endpoint — calculates and returns Compost Nashville rate	✅ Deployed
-/api/zone-validator.js	StopSuite zone validation logic	✅ Deployed
-/api/health.js	Health check endpoint for monitoring	✅ Deployed
-/api/routes/fetch-active.js	Signed StopSuite API route fetcher (ops debugging)	✅ Built
-/api/webhooks/order-created.js	Shopify webhook handler (order → StopSuite)	⚠️ Built, not deployed
-/api/webhooks/stopsuite-complete.js	StopSuite fulfillment → Shopify updates	⚠️ Built, not deployed
-/lib/geocode.js	Google Maps address → lat/lng conversion	✅ In use
-/lib/stopsuite-sync.js	StopSuite order sync utilities	⚠️ Built, not deployed
-/dev-carrier-server.js	Express app entry point (local development + logging)	✅ Dev only
-🧭 Unified “Rates + Ops” Model
+### **Language & Syntax**
+- ✅ Use **ES Modules** (`import`/`export`) — NO CommonJS (`require`)
+- ✅ Use **async/await** — NO raw `.then()` chains
+- ✅ Use **node-fetch** (ESM version) for all HTTP requests
+- ✅ Use **descriptive variable names** (e.g., `coordinates` not `coords`)
 
-This project originally considered splitting into two services:
+### **Emoji-Based Logging**
+Maintain consistent emoji logging throughout the codebase:
+```javascript
+console.log("📨 Shipping rate request received")
+console.log("🧾 Sending StopSuite payload:", payload)
+console.log("🌐 StopSuite GET /routes/")
+console.log("✅ Success:", result)
+console.warn("⚠️ Warning: Falling back to default")
+console.error("❌ Error:", error.message)
+console.log("🔐 HMAC signature generated")
+console.log("📍 Geocoding address...")
+console.log("🚗 Creating driver action")
+```
 
-Rates Service → Handles checkout logic (rate eligibility)
+### **Error Handling**
+- ✅ Always use try/catch blocks for async operations
+- ✅ Log errors with context (request ID, address, etc.)
+- ✅ Gracefully fall back to Shopify defaults on failures
+- ✅ Never expose secrets in error messages
 
-Ops Service → Handles fulfillment logic (order sync, routes)
-
-For v1, these are intentionally unified under one codebase for simplicity and speed:
-
-✅ Single .env for both Shopify + StopSuite credentials
-
-✅ Single deploy target on Vercel
-
-✅ One ngrok tunnel for all local testing
-
-✅ No cross-service latency or sync issues
-
-✅ Easier debugging and iteration during early rollout
-
-When Enzy expands to multiple compost partners (e.g. Compost KC, Compost ATL), these will become two separate services (enzy-rates, enzy-ops).
-
-🌐 Key Endpoints
-Endpoint	Description	Status
-POST /api/shipping-rates	Shopify → StopSuite compost delivery rate calculation	✅ Production
-GET /api/health	Health check for monitoring	✅ Production
-GET /api/routes/fetch-active	Signed StopSuite route fetch (diagnostic)	✅ Built
-POST /api/webhooks/order-created	Shopify order → StopSuite order sync	⚠️ Built, not deployed
-POST /api/webhooks/stopsuite-complete	StopSuite → Shopify fulfillment updates	⚠️ Built, not deployed
-🔁 Data Flow Summary
-At Checkout
-Shopify Checkout
-  ↓
-CarrierService → /api/shipping-rates
-  ↓
-Google Maps → Geocode address
-  ↓
-StopSuite → Validate Compost Nashville service area
-  ↓
-Return dynamic local delivery rate
-
-After Checkout (Not Yet Deployed)
-Shopify Order Creation
-  ↓
-Webhook trigger → /api/webhooks/order-created
-  ↓
-StopSuite → Create customer, location, and shop order
-  ↓
-(Future) Route assignment + fulfillment update
-
-🧩 Development Commands
-🔧 Local Development
-npm install
-node dev-carrier-server.js
-
-🧪 Testing
-npm run test:carrier      # Test checkout rate endpoint
-node test-shoporder.js    # Create mock StopSuite order
-
-🌐 Expose Local Server
-ngrok http 3001
-
-
-Use the generated HTTPS URL as your Shopify callback_url when registering the CarrierService.
-
-🧠 StopSuite Integration
-Endpoints Used
-
-POST /api/client/check-service-area/
-
-POST /api/client/customers/create/
-
-POST /api/client/customer-locations/create/
-
-POST /api/client/shop-orders/create/
-
-GET /api/client/routes/ (for testing + ops)
-
-Auth Headers
-X-API-Key
-X-Signature
-X-Timestamp
-X-Nonce
-
-Example Payload
-{
-  "products": [{ "product_id": 34, "quantity": 1 }],
-  "customer_location_id": 2000,
-  "delivery_notes": "Test order from Enzy → StopSuite integration"
+Example:
+```javascript
+try {
+  const result = await geocodeAddress(address);
+  console.log("✅ Geocoded:", result);
+} catch (error) {
+  console.error("❌ Geocoding failed:", error.message);
+  return res.json({ rates: [] }); // Fallback to Shopify default
 }
+```
 
-Example Shopify Checkout Rate Response
-{
-  "rates": [
-    {
-      "service_name": "Carbon Negative Delivery by Compost Nashville",
-      "service_code": "NASH_COMPOST_DELIVERY",
-      "total_price": "499",
-      "currency": "USD"
-    }
-  ]
+---
+
+## 🔒 Security Rules
+
+### **API Credentials**
+- ❌ **NEVER** hardcode API keys, secrets, or credentials
+- ✅ **ALWAYS** use `process.env.VARIABLE_NAME`
+- ✅ **ALWAYS** check for missing environment variables before making API calls
+
+Example:
+```javascript
+const API_KEY = process.env.STOPSUITE_API_KEY;
+if (!API_KEY) {
+  console.error("❌ Missing STOPSUITE_API_KEY");
+  return;
 }
+```
 
-🧱 File Structure
-📦 EnzyDelivery
-│
-├── api/                           # Vercel serverless functions
-│   ├── shipping-rates.js          # ✅ DEPLOYED - Carrier service endpoint
-│   ├── zone-validator.js          # ✅ DEPLOYED - Zone validation
-│   ├── health.js                  # ✅ DEPLOYED - Health check
-│   ├── routes/
-│   │   └── fetch-active.js        # StopSuite route fetcher
-│   └── webhooks/
-│       ├── order-created.js       # ⚠️ NOT DEPLOYED - Shopify → StopSuite sync
-│       └── stopsuite-complete.js  # ⚠️ NOT DEPLOYED - Fulfillment updates
-│
-├── lib/                           # Shared utilities
-│   ├── geocode.js                 # ✅ Google Maps geocoding
-│   └── stopsuite-sync.js          # ⚠️ StopSuite API helpers (not deployed)
-│
-├── web/                           # Development server files
-│   └── api/
-│       └── shipping-rates.js      # Local dev mirror of /api/shipping-rates.js
-│
-├── .claude/
-│   └── CLAUDE.md                  # This file - AI assistant guidance
-│
-├── dev-carrier-server.js          # Express dev server
-├── test-shoporder.js              # Test order sync
-├── package.json
-├── README.md
-├── ARCHITECTURE.md                # Future separation plan
-└── TODO.md                        # Task tracking
+### **HMAC Authentication**
+- ✅ **ALWAYS** use StopSuite's HMAC-SHA256 signing for Client API requests
+- ✅ Signature format: `METHOD|PATH|TIMESTAMP|NONCE|BODY`
+- ✅ Use `crypto.createHmac('sha256', SECRET_KEY)`
 
-🧩 Environment Variables
-STOPSUITE_API_KEY=pk_xxxxx
-STOPSUITE_SECRET_KEY=sk_xxxxx
-GOOGLE_MAPS_API_KEY=AIza...
-SHOPIFY_ADMIN_API_KEY=shpat_xxxxx
-SHOPIFY_STORE_URL=myshop.myshopify.com
+### **Sensitive Data**
+- ❌ **NEVER** log full API responses containing customer data
+- ❌ **NEVER** commit `.env` files
+- ✅ Sanitize logs before committing code
 
-🧠 Development Guidance for AI Assistants
+---
 
-When modifying or extending code:
+## 🧩 Code Organization
 
-🧱 Style & Syntax
+### **Where to Add New Features**
 
-Use ES Modules (import/export) — no CommonJS.
+| Feature Type | Location | Example |
+|--------------|----------|---------|
+| New API endpoint | `/api/` | `api/new-endpoint.js` |
+| Webhook handler | `/api/webhooks/` | `api/webhooks/new-webhook.js` |
+| StopSuite utilities | `/lib/` | `lib/stopsuite-helper.js` |
+| Zone validation | `/api/` | `api/zone-validator.js` |
+| Dev/testing scripts | `/scripts/` | `scripts/test-feature.js` |
+| New city/partner | `/api/zones/` (future) | `api/zones/kc-validator.js` |
 
-Always use async/await — no raw .then() chains.
+### **Import Path Rules**
+- ✅ Use relative imports: `import { geocode } from '../lib/geocode.js'`
+- ✅ Always include `.js` extension in imports
+- ✅ Keep utilities in `/lib/`, endpoints in `/api/`, scripts in `/scripts/`
+- ⚠️ **CRITICAL:** Never import from `dev-carrier-server.js` in production `/api/` files
+  - Bad: `import { CONSTANT } from '../../dev-carrier-server.js'`
+  - Good: Define constants locally or in `/lib/` shared utilities
 
-Use node-fetch (ESM version) for all API calls.
+### **Module Structure**
+```javascript
+// 1. Imports
+import fetch from 'node-fetch';
+import crypto from 'crypto';
 
-Maintain emoji-based logging:
+// 2. Constants
+const API_BASE = 'https://api.example.com';
 
-🧾 Payload out
+// 3. Helper functions
+function helperFunction() { ... }
 
-🌐 Request route
+// 4. Main export (for Vercel serverless)
+export default async function handler(req, res) { ... }
+```
 
-✅ Success
+---
 
-⚠️ Warning / fallback
+## 🧪 Testing Guidelines
 
-❌ Error
+### **Before Committing**
+- ✅ Test carrier service endpoint locally: `npm run dev`
+- ✅ Test StopSuite integration: `npm run test:order`
+- ✅ Test product fetching: `npm run test:products`
+- ✅ Check for console errors and warnings
+- ✅ Verify ngrok tunnel works with Shopify
 
-🔒 Security
+### **When Adding New Endpoints**
+- ✅ Add corresponding test script in `/scripts/` (e.g., `scripts/test-new-feature.js`)
+- ✅ Add npm script in `package.json` for easy access
+- ✅ Document in README.md under "API Endpoints"
+- ✅ Update TODO.md if not deployed yet
 
-Never hardcode secrets or ZIPs.
+### **Utility Scripts**
+All development and testing scripts are located in `/scripts/`:
+- `npm run carrier:list` - List Shopify carrier services
+- `npm run carrier:register` - Register carrier with Shopify
+- `npm run carrier:delete <ID>` - Delete carrier service by ID
+- `npm run test:order` - Test StopSuite order creation
+- `npm run test:products` - Test StopSuite product fetching
 
-Always pull keys from process.env.
+---
 
-Always use StopSuite’s HMAC signing method for requests.
+## 🚨 Important Constraints
 
-Strip sensitive logs before commit.
+### **StopSuite APIs**
+This project integrates with **TWO separate StopSuite APIs:**
 
-🧩 Organization
+1. **Zone Validation API** (used by carrier service)
+   - Base: `https://demo4.stopsuite.com/api/check-service-area/`
+   - No HMAC required
+   - Used in: `api/zone-validator.js`
 
-Add new StopSuite logic under /lib/ (e.g. stopsuite-sync.js).
+2. **Client API** (used by order middleware)
+   - Base: `https://demo4.stopsuite.com/api/client/`
+   - HMAC-SHA256 required
+   - Used in: `lib/stopsuite-sync.js`, `api/routes/fetch-active.js`
 
-Add new webhook handlers under /api/webhooks/*.
+**See [ARCHITECTURE.md](../ARCHITECTURE.md) for complete endpoint documentation.**
 
-For new integrations (Compost KC, ATL, etc.), create a new zone validator under /api/zones/.
+### **Vercel Deployment**
+- ✅ All `/api/*.js` files are serverless functions
+- ✅ 10-second timeout limit (must respond quickly)
+- ✅ Each function is isolated (no shared state)
 
-Keep everything modular for an eventual split into enzy-rates and enzy-ops.
+### **Future Architecture**
+- 🔮 v2 will split into two services: `enzy-rates` and `enzy-ops`
+- 🔮 Keep code modular to facilitate future separation
+- 🔮 See [ARCHITECTURE.md](../ARCHITECTURE.md) for migration plan
 
-🔄 Future Roadmap (v2+)
-Feature	Goal
-Webhook → Fulfillment Sync	Auto-update Shopify order status from StopSuite
-Customer Matching	Show different shipping messages/rates for existing Compost Nashville customers
-Dynamic Route Assignment	Auto-assign orders to drivers in StopSuite
-Rates + Ops Separation	Split into two microservices for scalability
-Multi-City Rollout	Extend Compost integration to additional cities
-✅ Current Status
+---
 
-Functional:
+## ✅ Quick Checklist for New Code
 
-✅ Shopify CarrierService rate calculation
+Before committing new code, verify:
 
-✅ Google Maps → StopSuite validation
+- [ ] Uses ES Modules (`import`/`export`)
+- [ ] Uses async/await (no `.then()`)
+- [ ] Includes emoji-based logging
+- [ ] No hardcoded secrets (uses `process.env`)
+- [ ] Proper error handling with try/catch
+- [ ] HMAC signing for StopSuite Client API calls
+- [ ] Follows existing file organization
+- [ ] Tested locally with `npm run test:carrier` or similar
+- [ ] Updated README.md if adding new endpoint
+- [ ] Updated TODO.md if feature isn't deployed yet
 
-✅ StopSuite shop-order creation
+---
 
-✅ HMAC authentication
+## 📚 Additional Resources
 
-✅ Unified Express server with logging
+- **[README.md](../README.md)** - Complete project documentation
+- **[ARCHITECTURE.md](../ARCHITECTURE.md)** - API details & v2 separation plan
+- **[TODO.md](../TODO.md)** - Active tasks & roadmap
 
-✅ Local + Vercel parity
+---
 
-Next Up:
-
-🔄 Delivery webhooks → Shopify fulfillment updates
-
-⚡ Smarter error retry handling
-
-🌎 Multi-city compost expansion
-
-🧭 Summary
-
-The Enzy Delivery Middleware is the operational backbone connecting Shopify checkout and StopSuite logistics.
-It authenticates via HMAC, validates compost service areas in real time, creates StopSuite orders automatically, and unifies all this under one Express app for simplicity and reliability.
-
-v1 = unified, stable foundation
-v2 = webhooks, routing, and scalability
+**Remember:** This is a production service handling real customer checkouts. Code quality, reliability, and security are critical! 🚀

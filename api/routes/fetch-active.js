@@ -1,8 +1,9 @@
 // /api/routes/fetch-active.js
 import fetch from "node-fetch";
 import crypto from "crypto";
-import { STOPSUITE_BASE_URL } from "../../dev-carrier-server.js";
 
+// ✅ Production-ready: Define constant locally instead of importing from dev server
+const STOPSUITE_BASE_URL = "https://demo4.stopsuite.com/api/client/";
 const API_KEY = process.env.STOPSUITE_API_KEY;
 const SECRET_KEY = process.env.STOPSUITE_SECRET_KEY;
 

@@ -2,16 +2,20 @@
   "name": "enzy-delivery-app",
   "version": "1.0.0",
   "type": "module",
-  "main": "web/index.js",
+  "main": "dev-carrier-server.js",
   "license": "UNLICENSED",
   "scripts": {
-    "test": "echo 'Run: npm run start:dev, then visit http://localhost:3000/test'",
-    "start": "node web/index.js",
-    "start:dev": "node dev-carrier-server.js",
+    "dev": "node dev-carrier-server.js",
+    "start": "node dev-carrier-server.js",
+    "test": "node dev-carrier-server.js",
     "vercel:dev": "vercel dev",
-    "dev:local": "node web/index.js",
     "verify": "echo 'Serverless functions - no build step needed, ready for deployment'",
-    "deploy": "vercel --prod"
+    "deploy": "vercel --prod",
+    "carrier:list": "node scripts/list-carriers.js",
+    "carrier:register": "node scripts/register-carrier.js",
+    "carrier:delete": "node scripts/delete-carrier.js",
+    "test:products": "node scripts/test-products.js",
+    "test:order": "node scripts/test-shoporder.js"
   },
   "dependencies": {
     "axios": "^1.6.0",

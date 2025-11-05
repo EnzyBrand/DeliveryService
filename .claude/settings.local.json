@@ -11,7 +11,9 @@
       "Bash(npm install:*)",
       "Bash(npm audit:*)",
       "Bash(ngrok:*)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)"
     ],
     "deny": [],
     "ask": []
