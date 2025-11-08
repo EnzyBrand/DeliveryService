@@ -7,7 +7,7 @@
   "variable": [
     {
       "key": "production_url",
-      "value": "https://enzy-delivery-carrier-service.vercel.app",
+      "value": "https://enzy-delivery-carrier-service-tristan2828s-projects.vercel.app",
       "type": "string"
     },
     {

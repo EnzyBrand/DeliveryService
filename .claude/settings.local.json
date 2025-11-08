@@ -16,6 +16,9 @@
       "Bash(findstr:*)",
       "Bash(vercel --prod:*)",
       "Bash(vercel logs:*)",
+      "Bash(vercel ls:*)",
+      "Bash(vercel inspect:*)",
+      "Bash(python:*)"
       "Bash(vercel ls:*)"
     ],
     "deny": [],

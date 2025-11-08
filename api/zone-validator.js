@@ -2,13 +2,15 @@ import fetch from "node-fetch";
 import crypto from "crypto";
 
 const STOPSUITE_API = "https://demo4.stopsuite.com/api/check-service-area/";
-const STOPSUITE_API_KEY = process.env.STOPSUITE_API_KEY?.trim();
-const STOPSUITE_SECRET_KEY = process.env.STOPSUITE_SECRET_KEY?.trim();
+
+// Lazy getters for env vars (so they're read at runtime, not module load time)
+const getApiKey = () => process.env.STOPSUITE_API_KEY?.trim();
+const getSecretKey = () => process.env.STOPSUITE_SECRET_KEY?.trim();
 
 function generateSignature(method, path, timestamp, nonce, body) {
   const message = `${method}|${path}|${timestamp}|${nonce}|${body}`;
   return crypto
-    .createHmac("sha256", STOPSUITE_SECRET_KEY)
+    .createHmac("sha256", getSecretKey())
     .update(message)
     .digest("hex");
 }
@@ -28,7 +30,7 @@ async function tryStopSuiteRequest(lat, lng) {
     const res = await fetch(STOPSUITE_API, {
       method,
       headers: {
-        "X-API-Key": STOPSUITE_API_KEY,
+        "X-API-Key": getApiKey(),
         "X-Signature": signature,
         "X-Timestamp": timestamp,
         "X-Nonce": nonce,
@@ -60,7 +62,7 @@ async function tryStopSuiteRequest(lat, lng) {
 }
 
 export async function validateDeliveryZone(lat, lng) {
-  if (!STOPSUITE_API_KEY || !STOPSUITE_SECRET_KEY) {
+  if (!getApiKey() || !getSecretKey()) {
     console.warn("⚠️ Missing StopSuite API keys!");
     return { inside: false };
   }
