@@ -3,8 +3,9 @@
   "builds": [
     { "src": "api-vercel/**/*.js", "use": "@vercel/node" }
   ],
-  "routes": [
-    { "src": "/api/(.*)", "dest": "api-vercel/$1" },
-    { "src": "/health", "dest": "api-vercel/health.js" }
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api-vercel/$1" },
+    { "source": "/health", "destination": "/api-vercel/health.js" }
   ]
 }
+
