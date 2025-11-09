@@ -4,33 +4,25 @@ import { syncOrderToStopSuite } from "../../lib/stopsuite-sync.js";
 const SHOPIFY_WEBHOOK_SECRET = process.env.SHOPIFY_WEBHOOK_SECRET;
 
 /**
- * Shopify → StopSuite webhook
- * Handles new orders and syncs them to StopSuite (customer, location, shop order)
- *
- * ✅ Express-compatible version (for local + ngrok testing)
+ * Shopify → StopSuite webhook (Vercel)
  */
-export default async function orderCreated(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+export default async function handler(req, res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method === "OPTIONS") return res.status(200).end();
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   try {
-    console.log("📥 Shopify webhook received (local Express mode)");
-    console.log("📦 Headers:", req.headers);
+    console.log("📥 Shopify webhook received (Vercel)");
 
-    // Use Express's already-parsed JSON body
     const body = req.body;
-
     if (!body || !body.id) {
       console.warn("⚠️ Missing or invalid order payload");
       return res.status(400).send("Missing order data");
     }
 
-    // 🧾 Log core order info
-    console.log(`🧾 Received new order ${body.name || "(unnamed)"} (${body.id})`);
-    console.log("📍 Ship to:", body.shipping_address || "No shipping address");
-
-    // ⚙️ Optional HMAC check (skip for local)
     const hmacHeader = req.headers["x-shopify-hmac-sha256"];
     if (hmacHeader && SHOPIFY_WEBHOOK_SECRET) {
       const generatedHash = crypto
@@ -39,14 +31,13 @@ export default async function orderCreated(req, res) {
         .digest("base64");
 
       if (generatedHash !== hmacHeader) {
-        console.warn("⚠️ HMAC mismatch (likely local test or ngrok). Ignoring for now.");
+        console.warn("⚠️ HMAC mismatch (ignored for now)");
       } else {
-        console.log("✅ HMAC verified successfully.");
+        console.log("✅ HMAC verified successfully");
       }
     }
 
-    // 🧩 Forward order to StopSuite
-    console.log(`⏳ Syncing order ${body.id} → StopSuite...`);
+    console.log(`⏳ Syncing order ${body.id} → StopSuite`);
     await syncOrderToStopSuite(body);
     console.log(`✅ StopSuite sync complete for order ${body.id}`);
 
@@ -56,4 +47,3 @@ export default async function orderCreated(req, res) {
     return res.status(500).send("Internal Server Error");
   }
 }
-
