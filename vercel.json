@@ -4,8 +4,8 @@
     { "src": "api-vercel/**/*.js", "use": "@vercel/node" }
   ],
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api-vercel/$1" },
     { "source": "/api/health", "destination": "/api-vercel/health.js" },
+    { "source": "/api/(.*)", "destination": "/api-vercel/$1" },
     { "source": "/health", "destination": "/api-vercel/health.js" }
   ]
 }
