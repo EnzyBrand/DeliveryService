@@ -3,7 +3,8 @@ import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 dotenv.config();
 
-const VERCEL_URL = process.env.VERCEL_PRODUCTION_URL || 'https://enzy-delivery-carrier-service-tristan2828s-projects.vercel.app';
+// ✅ Updated to match your live Vercel deployment
+const VERCEL_URL = process.env.VERCEL_PRODUCTION_URL || 'https://delivery-service-umber.vercel.app';
 
 // Test data matching Shopify's format
 const testCases = [
@@ -66,9 +67,7 @@ async function testEndpoint(testCase) {
   try {
     const response = await fetch(`${VERCEL_URL}/api/shipping-rates`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(testCase.payload),
     });
 

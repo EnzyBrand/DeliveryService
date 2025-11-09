@@ -7,12 +7,12 @@
   "variable": [
     {
       "key": "production_url",
-      "value": "https://enzy-delivery-carrier-service-tristan2828s-projects.vercel.app",
+      "value": "https://delivery-service-umber.vercel.app",
       "type": "string"
     },
     {
       "key": "local_url",
-      "value": "http://localhost:3000",
+      "value": "http://localhost:3001",
       "type": "string"
     }
   ],
@@ -56,10 +56,7 @@
           "request": {
             "method": "POST",
             "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
+              { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
               "mode": "raw",
@@ -78,10 +75,7 @@
           "request": {
             "method": "POST",
             "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
+              { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
               "mode": "raw",
@@ -100,10 +94,7 @@
           "request": {
             "method": "POST",
             "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
+              { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
               "mode": "raw",
@@ -122,10 +113,7 @@
           "request": {
             "method": "POST",
             "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
+              { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
               "mode": "raw",
@@ -149,10 +137,7 @@
           "request": {
             "method": "POST",
             "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
+              { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
               "mode": "raw",
@@ -171,10 +156,7 @@
           "request": {
             "method": "POST",
             "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
+              { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
               "mode": "raw",
@@ -197,77 +179,6 @@
               "raw": "{{local_url}}/test",
               "host": ["{{local_url}}"],
               "path": ["test"]
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Edge Cases & Error Testing",
-      "item": [
-        {
-          "name": "Empty Postal Code",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"rate\": {\n    \"destination\": {\n      \"postal_code\": \"\",\n      \"city\": \"Nashville\",\n      \"province\": \"TN\",\n      \"country\": \"US\",\n      \"address1\": \"123 Main St\"\n    },\n    \"items\": []\n  }\n}"
-            },
-            "url": {
-              "raw": "{{production_url}}/api/shipping-rates",
-              "host": ["{{production_url}}"],
-              "path": ["api", "shipping-rates"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "International Address (Should Return Empty Array)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"rate\": {\n    \"destination\": {\n      \"postal_code\": \"M5V 3A8\",\n      \"city\": \"Toronto\",\n      \"province\": \"ON\",\n      \"country\": \"CA\",\n      \"address1\": \"123 Queen St\"\n    },\n    \"items\": [\n      {\n        \"name\": \"Test Product\",\n        \"sku\": \"TEST-SKU\",\n        \"quantity\": 1,\n        \"grams\": 500,\n        \"price\": 2000\n      }\n    ]\n  }\n}"
-            },
-            "url": {
-              "raw": "{{production_url}}/api/shipping-rates",
-              "host": ["{{production_url}}"],
-              "path": ["api", "shipping-rates"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "OPTIONS Request (CORS Preflight)",
-          "request": {
-            "method": "OPTIONS",
-            "header": [
-              {
-                "key": "Access-Control-Request-Method",
-                "value": "POST"
-              },
-              {
-                "key": "Access-Control-Request-Headers",
-                "value": "Content-Type"
-              }
-            ],
-            "url": {
-              "raw": "{{production_url}}/api/shipping-rates",
-              "host": ["{{production_url}}"],
-              "path": ["api", "shipping-rates"]
             }
           },
           "response": []

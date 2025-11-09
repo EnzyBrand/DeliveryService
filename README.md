@@ -8,11 +8,10 @@ A Node.js serverless application that calculates dynamic "Carbon Negative Local 
 
 ## 📋 Status
 
-**✅ Production:** Carrier service deployed and registered with Shopify
-**⚠️ Built, Not Deployed:** Order sync webhooks (Vercel-ready)
-
-**Production URL:** `https://enzy-delivery-carrier-service-tristan2828s-projects.vercel.app` (stable - never changes)
-**Shopify Carrier ID:** `74345676973`
+**✅ Production:** Carrier service + webhooks deployed and live via Vercel  
+**✅ Integrated:** Order syncs with StopSuite verified  
+**🌐 Production URL:** `https://delivery-service-umber.vercel.app`  
+**🏷️ Shopify Carrier ID:** `74345676973`
 
 ---
 
@@ -20,8 +19,8 @@ A Node.js serverless application that calculates dynamic "Carbon Negative Local 
 
 This service acts as middleware between Shopify and StopSuite to:
 
-1. **At Checkout:** Calculate and return local compost delivery rates based on customer address
-2. **After Purchase (Not Active Yet):** Automatically sync orders to StopSuite for fulfillment
+1. **At Checkout:** Calculate and return local compost delivery rates based on customer address.
+2. **After Purchase:** Automatically sync orders to StopSuite for fulfillment and route assignment.
 
 ---
 
@@ -37,6 +36,7 @@ This service acts as middleware between Shopify and StopSuite to:
 ## ⚡ Quick Start
 
 ### Prerequisites
+
 - Node.js 18+
 - npm or yarn
 - Vercel CLI (for deployment)
@@ -54,9 +54,8 @@ cd enzy-delivery-app
 # Install dependencies
 npm install
 
-# Create .env file (see Environment Variables section below)
+# Create .env file
 cp .env.example .env
-```
 
 ### Environment Variables
 
