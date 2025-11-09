@@ -5,8 +5,8 @@
   ],
   "rewrites": [
     { "source": "/api/health", "destination": "/api-vercel/health.js" },
+    { "source": "/api/webhooks/(.*)", "destination": "/api-vercel/webhooks/$1.js" },
     { "source": "/api/(.*)", "destination": "/api-vercel/$1.js" },
     { "source": "/health", "destination": "/api-vercel/health.js" }
   ]
 }
-
