@@ -5,15 +5,25 @@
   "main": "dev-carrier-server.js",
   "license": "UNLICENSED",
   "scripts": {
+    // 🔧 Local Development
     "dev": "node dev-carrier-server.js",
     "start": "node dev-carrier-server.js",
-    "test": "node dev-carrier-server.js",
+    "test:local": "node scripts/test-shipping-endpoint.js",
+
+    // 🌍 Production (Vercel)
     "vercel:dev": "vercel dev",
-    "verify": "echo 'Serverless functions - no build step needed, ready for deployment'",
     "deploy": "vercel --prod",
+    "test:prod": "cross-env VERCEL_PRODUCTION_URL=https://delivery-service-umber.vercel.app node scripts/test-shipping-endpoint.js",
+
+    // 🧭 Verification
+    "verify": "echo 'Serverless functions ready — no build step required.'",
+
+    // 🏬 Shopify Carrier Management
     "carrier:list": "node scripts/list-carriers.js",
     "carrier:register": "node scripts/register-carrier.js",
     "carrier:delete": "node scripts/delete-carrier.js",
+
+    // 🧪 StopSuite API Testing
     "test:products": "node scripts/test-products.js",
     "test:order": "node scripts/test-shoporder.js"
   },
@@ -27,7 +37,8 @@
     "uuid": "^13.0.0"
   },
   "devDependencies": {
-    "vercel": "^48.1.6"
+    "vercel": "^48.1.6",
+    "cross-env": "^7.0.3"
   },
   "author": "trist",
   "private": true
