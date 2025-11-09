@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Enzy Delivery Carrier Service",
-    "description": "Postman collection for testing the Carbon Negative Local Delivery carrier service endpoints. Uses Google Maps Geocoding API and StopSuite zone validation.",
+    "description": "Postman collection for testing Enzy's Carbon Negative Local Delivery carrier service endpoints using StopSuite demo zones (Atlanta area).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -22,29 +22,11 @@
       "item": [
         {
           "name": "Production Health Check",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{production_url}}/health",
-              "host": ["{{production_url}}"],
-              "path": ["health"]
-            }
-          },
-          "response": []
+          "request": { "method": "GET", "url": { "raw": "{{production_url}}/health", "host": ["{{production_url}}"], "path": ["health"] } }
         },
         {
           "name": "Local Health Check",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{local_url}}/health",
-              "host": ["{{local_url}}"],
-              "path": ["health"]
-            }
-          },
-          "response": []
+          "request": { "method": "GET", "url": { "raw": "{{local_url}}/health", "host": ["{{local_url}}"], "path": ["health"] } }
         }
       ]
     },
@@ -52,136 +34,28 @@
       "name": "Shipping Rates - Production",
       "item": [
         {
-          "name": "Nashville Address (37201) - Should Get Carbon Negative Delivery",
+          "name": "Atlanta Demo Address (827 Lake Ave NE) – Should Get Carbon Negative Delivery",
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"rate\": {\n    \"destination\": {\n      \"postal_code\": \"37201\",\n      \"city\": \"Nashville\",\n      \"province\": \"TN\",\n      \"country\": \"US\",\n      \"address1\": \"123 Main St\"\n    },\n    \"items\": [\n      {\n        \"name\": \"Test Product\",\n        \"sku\": \"TEST-SKU\",\n        \"quantity\": 1,\n        \"grams\": 500,\n        \"price\": 2000,\n        \"vendor\": \"Test Vendor\",\n        \"requires_shipping\": true,\n        \"taxable\": true,\n        \"fulfillment_service\": \"manual\"\n      }\n    ]\n  }\n}"
+              "raw": "{\n  \"rate\": {\n    \"destination\": {\n      \"address1\": \"827 Lake Avenue Northeast\",\n      \"city\": \"Atlanta\",\n      \"province\": \"GA\",\n      \"country\": \"US\",\n      \"postal_code\": \"30307\"\n    },\n    \"items\": [\n      {\n        \"name\": \"Test Product\",\n        \"sku\": \"TEST-SKU\",\n        \"quantity\": 1,\n        \"grams\": 500,\n        \"price\": 2000,\n        \"vendor\": \"Test Vendor\",\n        \"requires_shipping\": true,\n        \"taxable\": true,\n        \"fulfillment_service\": \"manual\"\n      }\n    ]\n  }\n}"
             },
-            "url": {
-              "raw": "{{production_url}}/api/shipping-rates",
-              "host": ["{{production_url}}"],
-              "path": ["api", "shipping-rates"]
-            }
-          },
-          "response": []
+            "url": { "raw": "{{production_url}}/api/shipping-rates", "host": ["{{production_url}}"], "path": ["api", "shipping-rates"] }
+          }
         },
         {
-          "name": "Non-Nashville Address (90210) - Empty Array (Shopify Defaults)",
+          "name": "Outside Demo Zone (Savannah, GA) – Should Return Empty Array",
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"rate\": {\n    \"destination\": {\n      \"postal_code\": \"90210\",\n      \"city\": \"Beverly Hills\",\n      \"province\": \"CA\",\n      \"country\": \"US\",\n      \"address1\": \"123 Rodeo Dr\"\n    },\n    \"items\": [\n      {\n        \"name\": \"Test Product\",\n        \"sku\": \"TEST-SKU\",\n        \"quantity\": 1,\n        \"grams\": 500,\n        \"price\": 2000,\n        \"vendor\": \"Test Vendor\",\n        \"requires_shipping\": true,\n        \"taxable\": true,\n        \"fulfillment_service\": \"manual\"\n      }\n    ]\n  }\n}"
+              "raw": "{\n  \"rate\": {\n    \"destination\": {\n      \"address1\": \"123 Main St\",\n      \"city\": \"Savannah\",\n      \"province\": \"GA\",\n      \"country\": \"US\",\n      \"postal_code\": \"31401\"\n    },\n    \"items\": [\n      {\n        \"name\": \"Test Product\",\n        \"sku\": \"TEST-SKU\",\n        \"quantity\": 1,\n        \"grams\": 500,\n        \"price\": 2000,\n        \"vendor\": \"Test Vendor\",\n        \"requires_shipping\": true,\n        \"taxable\": true,\n        \"fulfillment_service\": \"manual\"\n      }\n    ]\n  }\n}"
             },
-            "url": {
-              "raw": "{{production_url}}/api/shipping-rates",
-              "host": ["{{production_url}}"],
-              "path": ["api", "shipping-rates"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Nashville Suburb (37211 - Green Hills) - Test StopSuite Zone",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"rate\": {\n    \"destination\": {\n      \"postal_code\": \"37211\",\n      \"city\": \"Nashville\",\n      \"province\": \"TN\",\n      \"country\": \"US\",\n      \"address1\": \"4000 Hillsboro Pike\"\n    },\n    \"items\": [\n      {\n        \"name\": \"Test Product\",\n        \"sku\": \"TEST-SKU\",\n        \"quantity\": 1,\n        \"grams\": 500,\n        \"price\": 2000,\n        \"vendor\": \"Test Vendor\",\n        \"requires_shipping\": true,\n        \"taxable\": true,\n        \"fulfillment_service\": \"manual\"\n      }\n    ]\n  }\n}"
-            },
-            "url": {
-              "raw": "{{production_url}}/api/shipping-rates",
-              "host": ["{{production_url}}"],
-              "path": ["api", "shipping-rates"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Invalid Request (Missing Data)",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"invalid\": \"request\"\n}"
-            },
-            "url": {
-              "raw": "{{production_url}}/api/shipping-rates",
-              "host": ["{{production_url}}"],
-              "path": ["api", "shipping-rates"]
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Shipping Rates - Local Development",
-      "item": [
-        {
-          "name": "Nashville Address (37201) - Local",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"rate\": {\n    \"destination\": {\n      \"postal_code\": \"37201\",\n      \"city\": \"Nashville\",\n      \"province\": \"TN\",\n      \"country\": \"US\",\n      \"address1\": \"123 Main St\"\n    },\n    \"items\": [\n      {\n        \"name\": \"Test Product\",\n        \"sku\": \"TEST-SKU\",\n        \"quantity\": 1,\n        \"grams\": 500,\n        \"price\": 2000,\n        \"vendor\": \"Test Vendor\",\n        \"requires_shipping\": true,\n        \"taxable\": true,\n        \"fulfillment_service\": \"manual\"\n      }\n    ]\n  }\n}"
-            },
-            "url": {
-              "raw": "{{local_url}}/api/shipping-rates",
-              "host": ["{{local_url}}"],
-              "path": ["api", "shipping-rates"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Non-Nashville Address (90210) - Local",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"rate\": {\n    \"destination\": {\n      \"postal_code\": \"90210\",\n      \"city\": \"Beverly Hills\",\n      \"province\": \"CA\",\n      \"country\": \"US\",\n      \"address1\": \"123 Rodeo Dr\"\n    },\n    \"items\": [\n      {\n        \"name\": \"Test Product\",\n        \"sku\": \"TEST-SKU\",\n        \"quantity\": 1,\n        \"grams\": 500,\n        \"price\": 2000,\n        \"vendor\": \"Test Vendor\",\n        \"requires_shipping\": true,\n        \"taxable\": true,\n        \"fulfillment_service\": \"manual\"\n      }\n    ]\n  }\n}"
-            },
-            "url": {
-              "raw": "{{local_url}}/api/shipping-rates",
-              "host": ["{{local_url}}"],
-              "path": ["api", "shipping-rates"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Local Test Endpoint (Dev Server)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{local_url}}/test",
-              "host": ["{{local_url}}"],
-              "path": ["test"]
-            }
-          },
-          "response": []
+            "url": { "raw": "{{production_url}}/api/shipping-rates", "host": ["{{production_url}}"], "path": ["api", "shipping-rates"] }
+          }
         }
       ]
     }
