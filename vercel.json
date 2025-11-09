@@ -5,6 +5,7 @@
   ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api-vercel/$1" },
+    { "source": "/api/health", "destination": "/api-vercel/health.js" },
     { "source": "/health", "destination": "/api-vercel/health.js" }
   ]
 }
