@@ -1,40 +1,49 @@
-/**
- * 🧾 StopSuite Signature Generator
- * Use this file to manually generate valid HMAC headers (X-Timestamp, X-Nonce, X-Signature)
- * for testing the production webhook endpoint on Vercel:
- *    https://delivery-service-umber.vercel.app/api/webhooks/stopsuite-complete
- */
-
 import crypto from "crypto";
 
-// ⚙️ Replace this with your actual StopSuite secret key from Vercel (.env)
-const STOPSUITE_SECRET_KEY = "YOUR_STOPSUITE_SECRET_KEY_HERE";
+/**
+ * Generates StopSuite-style HMAC headers for testing the Vercel webhook.
+ *
+ * Usage:
+ *   node generate-signature.js
+ */
+const STOPSUITE_SECRET_KEY = process.env.STOPSUITE_SECRET_KEY?.trim();
+if (!STOPSUITE_SECRET_KEY) {
+  console.error("❌ Missing STOPSUITE_SECRET_KEY in environment variables.");
+  process.exit(1);
+}
 
-// 🕒 Current UNIX timestamp (in seconds)
-const timestamp = Math.floor(Date.now() / 1000).toString();
-
-// 🧩 Unique nonce for this request
-const nonce = crypto.randomUUID();
-
-// 📨 Example webhook body (adjust order ID or fields if needed)
+// 1️⃣ Build a realistic StopSuite webhook body
 const body = JSON.stringify({
-  status: "complete",
-  external_reference: "shopify_1234567890", // test order ID
-  driver: "Test Driver",
-  notes: "Delivered successfully",
-  timestamp: "2025-11-09T15:30:00Z"
+  event: "stop.completed",
+  stop: {
+    id: 187772,
+    customer_location: 977,
+    driver_actions: [],
+    driver_images: [],
+    flags: [],
+    notes: "",
+    order: 5,
+    route: { id: 1234, name: "Test Route" },
+    service_records: [],
+    status: "complete",
+    timestamp: new Date().toISOString(),
+  },
 });
 
-// 🧠 Critical: path must include trailing slash “/” — matches production handler
-const message = `POST|/api/webhooks/stopsuite-complete|${timestamp}|${nonce}|${body}`;
+// 2️⃣ Create signature components
+const timestamp = Math.floor(Date.now() / 1000).toString();
+const nonce = crypto.randomUUID();
 
-// 🔐 Generate HMAC SHA256 signature
+// ⚙️ IMPORTANT — must match the deployed endpoint path exactly
+const message = `POST|/api/webhooks/stopsuite-complete/|${timestamp}|${nonce}|${body}`;
+
+// 3️⃣ Generate signature
 const signature = crypto
   .createHmac("sha256", STOPSUITE_SECRET_KEY)
-  .update(message, "utf8")
+  .update(message)
   .digest("hex");
 
-// ✅ Print results
+// 4️⃣ Output values for Postman
 console.log("\n✅ COPY THESE VALUES INTO POSTMAN:\n");
 console.log("X-Timestamp:", timestamp);
 console.log("X-Nonce:", nonce);
@@ -42,3 +51,4 @@ console.log("X-Signature:", signature);
 
 console.log("\n📦 Body sent to endpoint:\n", body);
 console.log("\n📬 Message string used for HMAC:\n", message);
+

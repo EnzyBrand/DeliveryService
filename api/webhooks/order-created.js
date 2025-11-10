@@ -5,9 +5,7 @@ const SHOPIFY_WEBHOOK_SECRET = process.env.SHOPIFY_WEBHOOK_SECRET;
 
 /**
  * Shopify → StopSuite webhook
- * Handles new orders and syncs them to StopSuite (customer, location, shop order)
- *
- * ✅ Express-compatible version (for local + ngrok testing)
+ * Handles new orders and syncs only "Carbon Negative Local Delivery" orders.
  */
 export default async function orderCreated(req, res) {
   if (req.method !== "POST") {
@@ -15,10 +13,8 @@ export default async function orderCreated(req, res) {
   }
 
   try {
-    console.log("📥 Shopify webhook received (local Express mode)");
-    console.log("📦 Headers:", req.headers);
+    console.log("📥 Shopify order webhook received");
 
-    // Use Express's already-parsed JSON body
     const body = req.body;
 
     if (!body || !body.id) {
@@ -27,10 +23,11 @@ export default async function orderCreated(req, res) {
     }
 
     // 🧾 Log core order info
-    console.log(`🧾 Received new order ${body.name || "(unnamed)"} (${body.id})`);
-    console.log("📍 Ship to:", body.shipping_address || "No shipping address");
+    console.log(`🧾 New order ${body.name || "(unnamed)"} (${body.id})`);
+    const shippingTitle = body.shipping_lines?.[0]?.title || "Unknown Shipping Method";
+    console.log(`🚚 Shipping method: ${shippingTitle}`);
 
-    // ⚙️ Optional HMAC check (skip for local)
+    // ⚙️ Optional HMAC verification
     const hmacHeader = req.headers["x-shopify-hmac-sha256"];
     if (hmacHeader && SHOPIFY_WEBHOOK_SECRET) {
       const generatedHash = crypto
@@ -39,16 +36,20 @@ export default async function orderCreated(req, res) {
         .digest("base64");
 
       if (generatedHash !== hmacHeader) {
-        console.warn("⚠️ HMAC mismatch (likely local test or ngrok). Ignoring for now.");
+        console.warn("⚠️ HMAC mismatch (likely dev/ngrok test). Continuing anyway.");
       } else {
-        console.log("✅ HMAC verified successfully.");
+        console.log("✅ HMAC verified.");
       }
     }
 
-    // 🧩 Forward order to StopSuite
-    console.log(`⏳ Syncing order ${body.id} → StopSuite...`);
-    await syncOrderToStopSuite(body);
-    console.log(`✅ StopSuite sync complete for order ${body.id}`);
+    // 🧭 Only forward if shipping type is "Carbon Negative Local Delivery"
+    if (shippingTitle.toLowerCase().includes("carbon negative local delivery")) {
+      console.log("♻️ Forwarding to StopSuite (Carbon Negative Local Delivery detected)");
+      await syncOrderToStopSuite(body);
+      console.log(`✅ StopSuite sync complete for order ${body.id}`);
+    } else {
+      console.log("🚫 Skipping StopSuite sync (non-local delivery order)");
+    }
 
     return res.status(200).send("✅ Webhook processed successfully");
   } catch (err) {
@@ -56,4 +57,3 @@ export default async function orderCreated(req, res) {
     return res.status(500).send("Internal Server Error");
   }
 }
-
