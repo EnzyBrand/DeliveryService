@@ -34,8 +34,8 @@ const body = JSON.stringify({
 const timestamp = Math.floor(Date.now() / 1000).toString();
 const nonce = crypto.randomUUID();
 
-// ⚙️ IMPORTANT — must match the deployed endpoint path exactly
-const message = `POST|/api/webhooks/stopsuite-complete/|${timestamp}|${nonce}|${body}`;
+// ⚙️ IMPORTANT — must match the deployed endpoint path exactly (NO trailing slash)
+const message = `POST|/api/webhooks/stopsuite-complete|${timestamp}|${nonce}|${body}`;
 
 // 3️⃣ Generate signature
 const signature = crypto
@@ -51,4 +51,3 @@ console.log("X-Signature:", signature);
 
 console.log("\n📦 Body sent to endpoint:\n", body);
 console.log("\n📬 Message string used for HMAC:\n", message);
-
