@@ -20,12 +20,10 @@ export default async function handler(req, res) {
     const timestamp = req.headers["x-timestamp"];
     const nonce = req.headers["x-nonce"];
 
-    // 2️⃣ Preserve the raw body as a string (important for HMAC verification)
-    const body =
-      typeof req.body === "string" ? req.body : JSON.stringify(req.body);
+    // 2️⃣ Preserve raw body string (important for HMAC verification)
+    const body = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
 
-    // 3️⃣ Build the message string exactly how StopSuite signs it
-    // 🔸 Note the trailing slash in the path — this must match StopSuite’s internal format
+    // 3️⃣ Build the signed message exactly as StopSuite signs it
     const message = `POST|/api/webhooks/stopsuite-complete/|${timestamp}|${nonce}|${body}`;
 
     const expected = crypto
@@ -40,24 +38,29 @@ export default async function handler(req, res) {
       return res.status(401).send("Unauthorized");
     }
 
-    // 4️⃣ Parse JSON safely
-    const webhookData =
-      typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+    // 4️⃣ Parse safely
+    let webhookData;
+    try {
+      webhookData = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+    } catch (e) {
+      console.error("❌ Failed to parse webhook JSON:", e);
+      return res.status(400).send("Invalid JSON body");
+    }
+
     console.log("📦 StopSuite webhook received:", webhookData);
 
-    // 5️⃣ Only handle completed stops
+    // 5️⃣ Handle only `stop.completed` events
     if (webhookData.event === "stop.completed" && webhookData.stop) {
       const stop = webhookData.stop;
       const stopId = stop.id;
-      const orderId = stop.order; // this is numeric (e.g. 5)
-
+      const orderId = stop.order; // numeric ID from StopSuite
       console.log(`✅ Stop completed: stop.id=${stopId}, order=${orderId}`);
 
-      // optional: look up a Shopify order ID mapping if you store them in metadata
-      // For testing, simulate a Shopify order:
+      // 6️⃣ (Optional) map StopSuite order → Shopify order
+      // For production, this would come from your own stored mapping
       const shopifyOrderId = `test-${orderId}`;
 
-      // 6️⃣ Example: mark order fulfilled
+      // 7️⃣ Create fulfillment in Shopify
       const url = `${SHOPIFY_ADMIN_URL}/orders/${shopifyOrderId}/fulfillments.json`;
       const payload = {
         fulfillment: {
@@ -75,8 +78,17 @@ export default async function handler(req, res) {
         body: JSON.stringify(payload),
       });
 
-      const data = await response.json();
-      console.log("✅ Shopify order fulfilled:", data);
+      // 8️⃣ Handle Shopify response safely
+      let data;
+      try {
+        const text = await response.text();
+        data = text ? JSON.parse(text) : {};
+      } catch (e) {
+        console.warn("⚠️ Shopify returned non-JSON response");
+        data = {};
+      }
+
+      console.log("✅ Shopify order fulfillment response:", data);
     } else {
       console.log("ℹ️ Ignored event type:", webhookData.event);
     }
@@ -87,4 +99,3 @@ export default async function handler(req, res) {
     return res.status(500).send("Error");
   }
 }
-
