@@ -1,12 +1,29 @@
 {
   "version": 2,
   "builds": [
-    { "src": "api-vercel/**/*.js", "use": "@vercel/node" }
+    {
+      "src": "api-vercel/**/*.js",
+      "use": "@vercel/node"
+    }
   ],
   "rewrites": [
-    { "source": "/api/health", "destination": "/api-vercel/health.js" },
-    { "source": "/api/webhooks/(.*)", "destination": "/api-vercel/webhooks/$1.js" },
-    { "source": "/api/(.*)", "destination": "/api-vercel/$1.js" },
-    { "source": "/health", "destination": "/api-vercel/health.js" }
-  ]
+    {
+      "source": "/api/webhooks/(.*)",
+      "destination": "/api-vercel/webhooks/$1.js"
+    },
+    {
+      "source": "/api/health",
+      "destination": "/api-vercel/health.js"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "/api-vercel/$1.js"
+    },
+    {
+      "source": "/health",
+      "destination": "/api-vercel/health.js"
+    }
+  ],
+  "cleanUrls": true,
+  "trailingSlash": true
 }
