@@ -10,20 +10,15 @@ const SHOPIFY_ADMIN_TOKEN = process.env.SHOPIFY_ADMIN_TOKEN?.trim();
  * Marks Shopify order fulfilled when StopSuite stop.completed event fires.
  */
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).send("Method Not Allowed");
-  }
+  if (req.method !== "POST") return res.status(405).send("Method Not Allowed");
 
   try {
-    // 🧾 Extract headers
     const timestamp = req.headers["x-timestamp"];
     const nonce = req.headers["x-nonce"];
     const signature = req.headers["x-signature"];
-
-    // 🧩 Normalize and stringify body
     const body = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
 
-    // ⚙️ Build message exactly as StopSuite signs it (NO trailing slash)
+    // ⚙️ Verify HMAC
     const message = `POST|/api/webhooks/stopsuite-complete|${timestamp}|${nonce}|${body}`;
     const expected = crypto.createHmac("sha256", STOPSUITE_SECRET_KEY).update(message).digest("hex");
 
@@ -37,22 +32,13 @@ export default async function handler(req, res) {
     console.log("📦 StopSuite webhook verified successfully:", req.body);
 
     const stop = req.body.stop;
-    if (!stop) {
-      console.warn("⚠️ Missing stop object in payload");
-      return res.status(400).json({ error: "Missing stop payload" });
-    }
-
     const driverAction = stop.driver_actions?.[0];
     const driverActionId = driverAction?.id || null;
     const driverNotes = driverAction?.notes || "";
 
-    console.log("✅ Stop completed:", {
-      stopId: stop.id,
-      driverActionId,
-      driverNotes,
-    });
+    console.log("✅ Stop completed:", { stopId: stop.id, driverActionId, driverNotes });
 
-    // 🧩 Try to extract Shopify order reference
+    // 🧩 Extract Shopify order ID
     const externalRef =
       req.body.external_reference ||
       stop.external_reference ||
@@ -71,7 +57,7 @@ export default async function handler(req, res) {
     // 🛒 Fulfill Shopify order
     const fulfillmentPayload = {
       fulfillment: {
-        location_id: Number(process.env.SHOPIFY_LOCATION_ID) || 123456789, // update with your actual location ID
+        location_id: Number(process.env.SHOPIFY_LOCATION_ID) || 123456789,
         tracking_numbers: driverActionId ? [String(driverActionId)] : [],
         notify_customer: true,
       },
@@ -89,7 +75,15 @@ export default async function handler(req, res) {
       }
     );
 
-    const data = await response.json();
+    // 🧠 Safely parse Shopify response (handles empty 204)
+    const text = await response.text();
+    let data;
+    try {
+      data = text ? JSON.parse(text) : { status: response.status, message: "No JSON body" };
+    } catch {
+      data = { status: response.status, raw: text };
+    }
+
     console.log("✅ Shopify fulfillment response:", data);
 
     return res.status(200).json({ success: true, shopifyResponse: data });
