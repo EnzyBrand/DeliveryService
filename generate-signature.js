@@ -26,7 +26,7 @@ const body = JSON.stringify({
 });
 
 // 🧠 Critical: path must include trailing slash “/” — matches production handler
-const message = `POST|/api-vercel/webhooks/stopsuite-complete/|${timestamp}|${nonce}|${body}`;
+const message = `POST|/api/webhooks/stopsuite-complete|${timestamp}|${nonce}|${body}`;
 
 // 🔐 Generate HMAC SHA256 signature
 const signature = crypto

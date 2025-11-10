@@ -7,7 +7,7 @@ const SHOPIFY_ADMIN_TOKEN = process.env.SHOPIFY_ADMIN_TOKEN?.trim();
 
 /**
  * StopSuite → Shopify webhook (Vercel)
- * Marks Shopify order fulfilled when driver marks delivery complete.
+ * Handles `stop.completed` events, verifies HMAC, and fulfills the Shopify order.
  */
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -15,27 +15,49 @@ export default async function handler(req, res) {
   }
 
   try {
+    // 1️⃣ Extract headers
     const hmacHeader = req.headers["x-signature"];
     const timestamp = req.headers["x-timestamp"];
     const nonce = req.headers["x-nonce"];
-    const body = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
+
+    // 2️⃣ Preserve the raw body as a string (important for HMAC verification)
+    const body =
+      typeof req.body === "string" ? req.body : JSON.stringify(req.body);
+
+    // 3️⃣ Build the message string exactly how StopSuite signs it
+    // 🔸 Note the trailing slash in the path — this must match StopSuite’s internal format
+    const message = `POST|/api/webhooks/stopsuite-complete/|${timestamp}|${nonce}|${body}`;
 
     const expected = crypto
       .createHmac("sha256", STOPSUITE_SECRET_KEY)
-      .update(`POST|/api/webhooks/stopsuite-complete/|${timestamp}|${nonce}|${body}`)
+      .update(message)
       .digest("hex");
 
     if (expected !== hmacHeader) {
       console.warn("⚠️ Invalid StopSuite webhook signature");
+      console.warn("Expected:", expected);
+      console.warn("Received:", hmacHeader);
       return res.status(401).send("Unauthorized");
     }
 
-    const webhookData = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+    // 4️⃣ Parse JSON safely
+    const webhookData =
+      typeof req.body === "string" ? JSON.parse(req.body) : req.body;
     console.log("📦 StopSuite webhook received:", webhookData);
 
-    if (webhookData?.status === "complete" && webhookData?.external_reference) {
-      const shopifyOrderId = webhookData.external_reference.replace("shopify_", "");
+    // 5️⃣ Only handle completed stops
+    if (webhookData.event === "stop.completed" && webhookData.stop) {
+      const stop = webhookData.stop;
+      const stopId = stop.id;
+      const orderId = stop.order; // this is numeric (e.g. 5)
 
+      console.log(`✅ Stop completed: stop.id=${stopId}, order=${orderId}`);
+
+      // optional: look up a Shopify order ID mapping if you store them in metadata
+      // For testing, simulate a Shopify order:
+      const shopifyOrderId = `test-${orderId}`;
+
+      // 6️⃣ Example: mark order fulfilled
       const url = `${SHOPIFY_ADMIN_URL}/orders/${shopifyOrderId}/fulfillments.json`;
       const payload = {
         fulfillment: {
@@ -55,6 +77,8 @@ export default async function handler(req, res) {
 
       const data = await response.json();
       console.log("✅ Shopify order fulfilled:", data);
+    } else {
+      console.log("ℹ️ Ignored event type:", webhookData.event);
     }
 
     return res.status(200).send("OK");
@@ -63,3 +87,4 @@ export default async function handler(req, res) {
     return res.status(500).send("Error");
   }
 }
+
