@@ -4,17 +4,19 @@ import crypto from "crypto";
  * Generates StopSuite-style HMAC headers for testing the Vercel webhook.
  *
  * Usage:
- *   node generate-signature.js
+ *   node -r dotenv/config generate-signature.js
  */
+
 const STOPSUITE_SECRET_KEY = process.env.STOPSUITE_SECRET_KEY?.trim();
 if (!STOPSUITE_SECRET_KEY) {
   console.error("❌ Missing STOPSUITE_SECRET_KEY in environment variables.");
   process.exit(1);
 }
 
-// 1️⃣ Build a realistic StopSuite webhook body
+// 1️⃣ Example StopSuite webhook body (you can edit values for tests)
 const body = JSON.stringify({
   event: "stop.completed",
+  external_reference: "shopify_6413199081645",
   stop: {
     id: 187772,
     customer_location: 977,
@@ -34,7 +36,7 @@ const body = JSON.stringify({
 const timestamp = Math.floor(Date.now() / 1000).toString();
 const nonce = crypto.randomUUID();
 
-// ⚙️ IMPORTANT — must match the deployed endpoint path exactly (NO trailing slash)
+// ⚙️ IMPORTANT — must match deployed endpoint path exactly (NO trailing slash)
 const message = `POST|/api/webhooks/stopsuite-complete|${timestamp}|${nonce}|${body}`;
 
 // 3️⃣ Generate signature
@@ -43,7 +45,7 @@ const signature = crypto
   .update(message)
   .digest("hex");
 
-// 4️⃣ Output values for Postman
+// 4️⃣ Output to console
 console.log("\n✅ COPY THESE VALUES INTO POSTMAN:\n");
 console.log("X-Timestamp:", timestamp);
 console.log("X-Nonce:", nonce);
@@ -51,3 +53,4 @@ console.log("X-Signature:", signature);
 
 console.log("\n📦 Body sent to endpoint:\n", body);
 console.log("\n📬 Message string used for HMAC:\n", message);
+
