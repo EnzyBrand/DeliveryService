@@ -2,9 +2,8 @@ import crypto from "crypto";
 import fetch from "node-fetch";
 
 const STOPSUITE_SECRET_KEY = process.env.STOPSUITE_SECRET_KEY?.trim();
+const SHOPIFY_ADMIN_URL = process.env.SHOPIFY_ADMIN_URL?.trim() || "https://006sda-7b.myshopify.com/admin/api/2025-04";
 const SHOPIFY_ADMIN_TOKEN = process.env.SHOPIFY_ADMIN_API_KEY?.trim();
-const SHOPIFY_API_VERSION = "2025-04";
-const SHOPIFY_STORE_URL = "https://006sda-7b.myshopify.com";
 
 /**
  * StopSuite → Shopify webhook (Vercel)
@@ -51,8 +50,8 @@ export default async function handler(req, res) {
   console.log(`🔗 Mapped to Shopify Order ID: ${shopifyOrderId}`);
 
   try {
-    // STEP 1️⃣: Fetch fulfillment orders
-    const fulfillmentOrdersUrl = `${SHOPIFY_STORE_URL}/admin/api/${SHOPIFY_API_VERSION}/orders/${shopifyOrderId}/fulfillment_orders.json`;
+    // STEP 1️⃣: Try fetching fulfillment orders first
+    const fulfillmentOrdersUrl = `${SHOPIFY_ADMIN_URL}/orders/${shopifyOrderId}/fulfillment_orders.json`;
     const fulfillmentOrdersRes = await fetch(fulfillmentOrdersUrl, {
       method: "GET",
       headers: {
@@ -64,41 +63,34 @@ export default async function handler(req, res) {
     const fulfillmentOrdersData = await fulfillmentOrdersRes.json();
     const fulfillmentOrder = fulfillmentOrdersData.fulfillment_orders?.[0];
 
-    if (!fulfillmentOrder) {
-      throw new Error("No fulfillment orders found for this order.");
-    }
-
-    const fulfillmentOrderId = fulfillmentOrder.id;
-    const lineItem = fulfillmentOrder.line_items?.[0];
-
-    // STEP 2️⃣: Build payload
+    // STEP 2️⃣: Build the base fulfillment payload
     const payload = {
       fulfillment: {
-        location_id: fulfillmentOrder.assigned_location_id,
         tracking_info: {
           number: driverActionId.toString(),
           company: "Enzy Delivery",
           url: `https://demo4.stopsuite.com/stops/${stop.id}`,
         },
-        line_items_by_fulfillment_order: [
-          {
-            fulfillment_order_id: fulfillmentOrderId,
-            fulfillment_order_line_items: [
-              {
-                id: lineItem.id,
-                quantity: lineItem.quantity,
-              },
-            ],
-          },
-        ],
         notify_customer: true,
       },
     };
 
-    console.log("📦 Shopify Fulfillment Payload:", JSON.stringify(payload, null, 2));
+    // STEP 3️⃣: Use fulfillment_orders if they exist, fallback if not
+    let fulfillmentUrl;
+    if (fulfillmentOrder) {
+      payload.fulfillment.line_items_by_fulfillment_order = [
+        {
+          fulfillment_order_id: fulfillmentOrder.id,
+        },
+      ];
+      fulfillmentUrl = `${SHOPIFY_ADMIN_URL}/fulfillments.json`;
+      console.log("📦 Using fulfillment_orders API...");
+    } else {
+      fulfillmentUrl = `${SHOPIFY_ADMIN_URL}/orders/${shopifyOrderId}/fulfillments.json`;
+      console.log("📦 No fulfillment_orders found — using fallback /orders/{id}/fulfillments.json");
+    }
 
-    // STEP 3️⃣: Create fulfillment
-    const fulfillmentUrl = `${SHOPIFY_STORE_URL}/admin/api/${SHOPIFY_API_VERSION}/fulfillments.json`;
+    // STEP 4️⃣: Create fulfillment
     const response = await fetch(fulfillmentUrl, {
       method: "POST",
       headers: {
