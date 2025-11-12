@@ -94,25 +94,57 @@ export default async function handler(req, res) {
 
     const fulfillmentOrder = fulfillmentOrdersData.fulfillment_orders?.[0];
 
-    // 6️⃣ Build fulfillment payload
-    const payload = {
+    // 6️⃣ Build base fulfillment payload
+    const payloadBase = {
       fulfillment: {
         location_id: Number(process.env.SHOPIFY_LOCATION_ID),
-        tracking_number: driverActionId.toString(),
-        tracking_company: "Enzy Delivery",
         notify_customer: true,
+        tracking_company: "Enzy Delivery",
+        tracking_number: driverActionId.toString(),
+        line_items: [],
       },
     };
 
-    // 7️⃣ Decide endpoint (fallback if needed)
+    // 7️⃣ Use fulfillment_orders API if available, otherwise fallback
     let fulfillmentUrl;
+    let payload;
+
     if (fulfillmentOrder) {
-      payload.fulfillment.line_items_by_fulfillment_order = [
-        { fulfillment_order_id: fulfillmentOrder.id },
-      ];
+      payload = {
+        fulfillment: {
+          ...payloadBase.fulfillment,
+          line_items_by_fulfillment_order: [
+            { fulfillment_order_id: fulfillmentOrder.id },
+          ],
+        },
+      };
       fulfillmentUrl = `${SHOPIFY_ADMIN_URL}/fulfillments.json`;
       console.log("📦 Using fulfillment_orders API...");
     } else {
+      // Fetch order details to get line item IDs for fallback
+      const orderUrl = `${SHOPIFY_ADMIN_URL}/orders/${shopifyOrderId}.json`;
+      const orderRes = await fetch(orderUrl, {
+        method: "GET",
+        headers: {
+          "X-Shopify-Access-Token": SHOPIFY_ADMIN_TOKEN,
+          Accept: "application/json",
+        },
+      });
+      const orderJson = await orderRes.json();
+
+      const lineItems =
+        orderJson?.order?.line_items?.map((i) => ({
+          id: i.id,
+          quantity: i.quantity,
+        })) || [];
+
+      payload = {
+        fulfillment: {
+          ...payloadBase.fulfillment,
+          line_items: lineItems,
+        },
+      };
+
       fulfillmentUrl = `${SHOPIFY_ADMIN_URL}/orders/${shopifyOrderId}/fulfillments.json`;
       console.log(
         "📦 No fulfillment_orders found — using fallback /orders/{id}/fulfillments.json"
