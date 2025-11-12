@@ -13,7 +13,7 @@ if (!STOPSUITE_SECRET_KEY) {
   process.exit(1);
 }
 
-// 1️⃣ Example StopSuite webhook body (edit freely for testing)
+// 1️⃣ Example StopSuite webhook body — edit if needed for tests
 const body = JSON.stringify({
   event: "stop.completed",
   external_reference: "shopify_6413199081645",
@@ -36,7 +36,7 @@ const body = JSON.stringify({
 const timestamp = Math.floor(Date.now() / 1000).toString();
 const nonce = crypto.randomUUID();
 
-// ⚙️ Must match deployed endpoint path exactly (NO trailing slash)
+// ⚙️ IMPORTANT — must match deployed Vercel endpoint exactly (no trailing slash)
 const message = `POST|/api/webhooks/stopsuite-complete|${timestamp}|${nonce}|${body}`;
 
 // 3️⃣ Generate signature
@@ -45,7 +45,7 @@ const signature = crypto
   .update(message)
   .digest("hex");
 
-// 4️⃣ Output
+// 4️⃣ Output everything cleanly for Postman
 console.log("\n✅ COPY THESE VALUES INTO POSTMAN:\n");
 console.log("X-Timestamp:", timestamp);
 console.log("X-Nonce:", nonce);

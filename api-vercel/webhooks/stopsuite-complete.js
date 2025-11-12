@@ -5,7 +5,12 @@ const STOPSUITE_SECRET_KEY = process.env.STOPSUITE_SECRET_KEY?.trim();
 const SHOPIFY_ADMIN_URL =
   process.env.SHOPIFY_ADMIN_URL?.trim() ||
   "https://006sda-7b.myshopify.com/admin/api/2025-04";
-const SHOPIFY_ADMIN_TOKEN = process.env.SHOPIFY_ADMIN_API_KEY?.trim();
+const SHOPIFY_ADMIN_TOKEN =
+  process.env.SHOPIFY_ADMIN_TOKEN?.trim() ||
+  process.env.SHOPIFY_ADMIN_API_KEY?.trim();
+
+// ✅ Your Enzy location
+const SHOPIFY_LOCATION_ID = 74583474349;
 
 /**
  * StopSuite → Shopify webhook (Vercel)
@@ -14,106 +19,129 @@ const SHOPIFY_ADMIN_TOKEN = process.env.SHOPIFY_ADMIN_API_KEY?.trim();
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).send("Method Not Allowed");
 
-  const timestamp = req.headers["x-timestamp"];
-  const nonce = req.headers["x-nonce"];
-  const signature = req.headers["x-signature"];
-  const body = JSON.stringify(req.body);
-  const message = `POST|/api/webhooks/stopsuite-complete|${timestamp}|${nonce}|${body}`;
-  const expected = crypto.createHmac("sha256", STOPSUITE_SECRET_KEY).update(message).digest("hex");
-
-  if (signature !== expected) {
-    console.warn("⚠️ Invalid StopSuite webhook signature");
-    console.warn("Expected:", expected);
-    console.warn("Received:", signature);
-    return res.status(401).json({ error: "Invalid signature" });
-  }
-
-  console.log("📦 StopSuite webhook verified successfully:", req.body);
-
-  const stop = req.body.stop;
-  const driverAction = stop.driver_actions?.[0];
-  const driverActionId = driverAction?.id || "NA";
-  const driverNotes = driverAction?.notes || "";
-
-  console.log("✅ Stop completed:", { stopId: stop.id, driverActionId, driverNotes });
-
-  const externalRef =
-    req.body.external_reference ||
-    stop.external_reference ||
-    driverNotes.match(/shopify_(\d+)/)?.[1] ||
-    null;
-
-  if (!externalRef) {
-    console.warn("⚠️ No Shopify reference found in StopSuite payload");
-    return res.status(200).json({ message: "No Shopify reference found" });
-  }
-
-  const shopifyOrderId = externalRef.replace("shopify_", "");
-  console.log(`🔗 Mapped to Shopify Order ID: ${shopifyOrderId}`);
-
   try {
-    // 1️⃣ Fetch order details to get line items
-    const orderUrl = `${SHOPIFY_ADMIN_URL}/orders/${shopifyOrderId}.json`;
-    const orderRes = await fetch(orderUrl, {
-      method: "GET",
-      headers: {
-        "X-Shopify-Access-Token": SHOPIFY_ADMIN_TOKEN,
-        "Content-Type": "application/json",
-      },
-    });
-    const orderData = await orderRes.json();
+    // 1️⃣ Extract headers
+    const timestamp = req.headers["x-timestamp"];
+    const nonce = req.headers["x-nonce"];
+    const signature = req.headers["x-signature"];
+    const body = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
 
-    const lineItems =
-      orderData?.order?.line_items?.map((item) => ({
-        id: item.id,
-        quantity: item.quantity,
-      })) || [];
+    // 2️⃣ Verify StopSuite HMAC signature
+    const message = `POST|/api/webhooks/stopsuite-complete|${timestamp}|${nonce}|${body}`;
+    const expected = crypto
+      .createHmac("sha256", STOPSUITE_SECRET_KEY)
+      .update(message)
+      .digest("hex");
 
-    if (lineItems.length === 0) {
-      console.warn("⚠️ No line_items found for order", shopifyOrderId);
-      return res.status(200).json({ message: "No line items found, skipping fulfillment" });
+    if (signature !== expected) {
+      console.warn("⚠️ Invalid StopSuite webhook signature");
+      console.warn("Expected:", expected);
+      console.warn("Received:", signature);
+      return res.status(401).json({ error: "Invalid signature" });
     }
 
-    // 2️⃣ Try fulfillment_orders first
+    // 3️⃣ Parse and log webhook
+    const webhookData = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+    console.log("📦 StopSuite webhook verified successfully:", webhookData);
+
+    if (webhookData?.event !== "stop.completed" || !webhookData?.stop) {
+      return res.status(200).send("No stop.completed event found");
+    }
+
+    const stop = webhookData.stop;
+    const driverAction = stop.driver_actions?.[0];
+    const driverActionId = driverAction?.id || "NA";
+    const driverNotes = driverAction?.notes || "";
+
+    console.log("✅ Stop completed:", { stopId: stop.id, driverActionId, driverNotes });
+
+    // 4️⃣ Extract Shopify order ID
+    const externalRef =
+      webhookData.external_reference ||
+      stop.external_reference ||
+      driverNotes.match(/shopify_(\d+)/)?.[1] ||
+      null;
+
+    if (!externalRef) {
+      console.warn("⚠️ No Shopify reference found in StopSuite payload");
+      return res.status(200).json({ message: "No Shopify reference found" });
+    }
+
+    const shopifyOrderId = externalRef.replace("shopify_", "");
+    console.log(`🔗 Mapped to Shopify Order ID: ${shopifyOrderId}`);
+
+    // 5️⃣ Try to fetch fulfillment orders first
     const fulfillmentOrdersUrl = `${SHOPIFY_ADMIN_URL}/orders/${shopifyOrderId}/fulfillment_orders.json`;
     const fulfillmentOrdersRes = await fetch(fulfillmentOrdersUrl, {
-      method: "GET",
       headers: {
         "X-Shopify-Access-Token": SHOPIFY_ADMIN_TOKEN,
         "Content-Type": "application/json",
       },
     });
-    const fulfillmentOrdersData = await fulfillmentOrdersRes.json();
-    const fulfillmentOrder = fulfillmentOrdersData.fulfillment_orders?.[0];
 
-    // 3️⃣ Build fulfillment payload
-    const payload = {
-      fulfillment: {
-        location_id: 74583474349, // ✅ your actual location ID
-        tracking_info: {
-          number: driverActionId.toString(),
-          company: "Enzy Delivery",
-          url: `https://demo4.stopsuite.com/stops/${stop.id}`,
-        },
-        notify_customer: true,
-        line_items: lineItems, // always include line_items
-      },
-    };
-
-    // 4️⃣ Choose URL (fulfillment_orders or fallback)
-    let fulfillmentUrl;
-    if (fulfillmentOrder) {
-      payload.fulfillment.line_items_by_fulfillment_order = [
-        { fulfillment_order_id: fulfillmentOrder.id },
-      ];
-      fulfillmentUrl = `${SHOPIFY_ADMIN_URL}/fulfillments.json`;
-      console.log("📦 Using fulfillment_orders API...");
-    } else {
-      fulfillmentUrl = `${SHOPIFY_ADMIN_URL}/orders/${shopifyOrderId}/fulfillments.json`;
-      console.log("📦 Using fallback /orders/{id}/fulfillments.json");
+    const fulfillmentOrdersText = await fulfillmentOrdersRes.text();
+    let fulfillmentOrdersData;
+    try {
+      fulfillmentOrdersData = JSON.parse(fulfillmentOrdersText);
+    } catch {
+      console.warn("⚠️ Shopify returned non-JSON for fulfillment_orders:", fulfillmentOrdersText);
+      fulfillmentOrdersData = {};
     }
 
-    // 5️⃣ Create fulfillment
+    const fulfillmentOrder = fulfillmentOrdersData.fulfillment_orders?.[0];
+
+    // 6️⃣ If fulfillment_orders are empty, fetch order line items (classic REST fallback)
+    let lineItems = [];
+    if (!fulfillmentOrder) {
+      console.log("📦 No fulfillment_orders found — using fallback /orders/{id}/fulfillments.json");
+
+      const orderUrl = `${SHOPIFY_ADMIN_URL}/orders/${shopifyOrderId}.json`;
+      const orderRes = await fetch(orderUrl, {
+        headers: {
+          "X-Shopify-Access-Token": SHOPIFY_ADMIN_TOKEN,
+          "Content-Type": "application/json",
+        },
+      });
+      const orderData = await orderRes.json();
+      lineItems =
+        orderData?.order?.line_items?.map((item) => ({
+          id: item.id,
+          quantity: item.quantity,
+        })) || [];
+    }
+
+    // 7️⃣ Build fulfillment payload
+    const payload = fulfillmentOrder
+      ? {
+          fulfillment: {
+            tracking_info: {
+              number: driverActionId.toString(),
+              company: "Enzy Delivery",
+              url: `https://demo4.stopsuite.com/stops/${stop.id}`,
+            },
+            line_items_by_fulfillment_order: [
+              { fulfillment_order_id: fulfillmentOrder.id },
+            ],
+            notify_customer: true,
+          },
+        }
+      : {
+          fulfillment: {
+            location_id: SHOPIFY_LOCATION_ID,
+            tracking_number: driverActionId.toString(),
+            tracking_company: "Enzy Delivery",
+            tracking_url: `https://demo4.stopsuite.com/stops/${stop.id}`,
+            notify_customer: true,
+            line_items: lineItems,
+          },
+        };
+
+    // 8️⃣ Choose correct endpoint
+    const fulfillmentUrl = fulfillmentOrder
+      ? `${SHOPIFY_ADMIN_URL}/fulfillments.json`
+      : `${SHOPIFY_ADMIN_URL}/orders/${shopifyOrderId}/fulfillments.json`;
+
+    // 9️⃣ Send fulfillment request
     const response = await fetch(fulfillmentUrl, {
       method: "POST",
       headers: {
@@ -128,8 +156,8 @@ export default async function handler(req, res) {
     try {
       data = JSON.parse(responseText);
     } catch {
-      console.warn("⚠️ Shopify returned non-JSON or empty response:", responseText);
       data = { raw: responseText, status: response.status };
+      console.warn("⚠️ Shopify returned non-JSON or empty response:", responseText);
     }
 
     console.log("✅ Shopify fulfillment response:", data);
@@ -139,4 +167,3 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: err.message });
   }
 }
-
