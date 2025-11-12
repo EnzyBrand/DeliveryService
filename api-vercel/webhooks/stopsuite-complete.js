@@ -5,9 +5,7 @@ const STOPSUITE_SECRET_KEY = process.env.STOPSUITE_SECRET_KEY?.trim();
 const SHOPIFY_ADMIN_URL =
   process.env.SHOPIFY_ADMIN_URL?.trim() ||
   "https://006sda-7b.myshopify.com/admin/api/2025-04";
-const SHOPIFY_ADMIN_TOKEN =
-  process.env.SHOPIFY_ADMIN_TOKEN?.trim() ||
-  process.env.SHOPIFY_ADMIN_API_KEY?.trim();
+const SHOPIFY_ADMIN_TOKEN = process.env.SHOPIFY_ADMIN_API_KEY?.trim();
 
 /**
  * StopSuite → Shopify webhook (Vercel)
@@ -21,10 +19,7 @@ export default async function handler(req, res) {
   const signature = req.headers["x-signature"];
   const body = JSON.stringify(req.body);
   const message = `POST|/api/webhooks/stopsuite-complete|${timestamp}|${nonce}|${body}`;
-  const expected = crypto
-    .createHmac("sha256", STOPSUITE_SECRET_KEY)
-    .update(message)
-    .digest("hex");
+  const expected = crypto.createHmac("sha256", STOPSUITE_SECRET_KEY).update(message).digest("hex");
 
   if (signature !== expected) {
     console.warn("⚠️ Invalid StopSuite webhook signature");
@@ -57,7 +52,7 @@ export default async function handler(req, res) {
   console.log(`🔗 Mapped to Shopify Order ID: ${shopifyOrderId}`);
 
   try {
-    // STEP 1️⃣: Try fetching fulfillment orders first
+    // STEP 1️⃣: Try fulfillment_orders first
     const fulfillmentOrdersUrl = `${SHOPIFY_ADMIN_URL}/orders/${shopifyOrderId}/fulfillment_orders.json`;
     const fulfillmentOrdersRes = await fetch(fulfillmentOrdersUrl, {
       method: "GET",
@@ -67,10 +62,18 @@ export default async function handler(req, res) {
       },
     });
 
-    const fulfillmentOrdersData = await fulfillmentOrdersRes.json();
+    const fulfillmentOrdersText = await fulfillmentOrdersRes.text();
+    let fulfillmentOrdersData;
+    try {
+      fulfillmentOrdersData = JSON.parse(fulfillmentOrdersText);
+    } catch {
+      console.warn("⚠️ Shopify returned non-JSON for fulfillment_orders:", fulfillmentOrdersText);
+      fulfillmentOrdersData = {};
+    }
+
     const fulfillmentOrder = fulfillmentOrdersData.fulfillment_orders?.[0];
 
-    // STEP 2️⃣: Build base payload
+    // STEP 2️⃣: Build fulfillment payload
     const payload = {
       fulfillment: {
         tracking_info: {
@@ -82,7 +85,7 @@ export default async function handler(req, res) {
       },
     };
 
-    // STEP 3️⃣: Use fulfillment_orders if available
+    // STEP 3️⃣: Use fallback if no fulfillment_orders
     let fulfillmentUrl;
     if (fulfillmentOrder) {
       payload.fulfillment.line_items_by_fulfillment_order = [
@@ -105,9 +108,16 @@ export default async function handler(req, res) {
       body: JSON.stringify(payload),
     });
 
-    const data = await response.json();
-    console.log("✅ Shopify fulfillment response:", data);
+    const responseText = await response.text();
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch {
+      console.warn("⚠️ Shopify returned non-JSON or empty response:", responseText);
+      data = { raw: responseText, status: response.status };
+    }
 
+    console.log("✅ Shopify fulfillment response:", data);
     return res.status(200).json({ success: true, data });
   } catch (err) {
     console.error("❌ Shopify fulfillment error:", err);
