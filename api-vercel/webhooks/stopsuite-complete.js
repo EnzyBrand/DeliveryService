@@ -18,6 +18,8 @@ export default async function handler(req, res) {
   const nonce = req.headers["x-nonce"];
   const signature = req.headers["x-signature"];
   const body = JSON.stringify(req.body);
+
+  // ✅ Must match deployed endpoint path exactly (NO trailing slash)
   const message = `POST|/api/webhooks/stopsuite-complete|${timestamp}|${nonce}|${body}`;
   const expected = crypto.createHmac("sha256", STOPSUITE_SECRET_KEY).update(message).digest("hex");
 
