@@ -13,7 +13,7 @@ if (!STOPSUITE_SECRET_KEY) {
   process.exit(1);
 }
 
-// 1️⃣ Example StopSuite webhook body (editable for tests)
+// 1️⃣ Example StopSuite webhook body (edit freely for testing)
 const body = JSON.stringify({
   event: "stop.completed",
   external_reference: "shopify_6413199081645",
@@ -32,17 +32,20 @@ const body = JSON.stringify({
   },
 });
 
-// 2️⃣ Generate HMAC components
+// 2️⃣ Create signature components
 const timestamp = Math.floor(Date.now() / 1000).toString();
 const nonce = crypto.randomUUID();
 
-// ⚙️ Must match deployed endpoint exactly (NO trailing slash)
+// ⚙️ Must match deployed endpoint path exactly (NO trailing slash)
 const message = `POST|/api/webhooks/stopsuite-complete|${timestamp}|${nonce}|${body}`;
 
 // 3️⃣ Generate signature
-const signature = crypto.createHmac("sha256", STOPSUITE_SECRET_KEY).update(message).digest("hex");
+const signature = crypto
+  .createHmac("sha256", STOPSUITE_SECRET_KEY)
+  .update(message)
+  .digest("hex");
 
-// 4️⃣ Output for Postman
+// 4️⃣ Output
 console.log("\n✅ COPY THESE VALUES INTO POSTMAN:\n");
 console.log("X-Timestamp:", timestamp);
 console.log("X-Nonce:", nonce);
