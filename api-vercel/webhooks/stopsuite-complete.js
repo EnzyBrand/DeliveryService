@@ -2,8 +2,12 @@ import crypto from "crypto";
 import fetch from "node-fetch";
 
 const STOPSUITE_SECRET_KEY = process.env.STOPSUITE_SECRET_KEY?.trim();
-const SHOPIFY_ADMIN_URL = process.env.SHOPIFY_ADMIN_URL?.trim() || "https://006sda-7b.myshopify.com/admin/api/2025-04";
-const SHOPIFY_ADMIN_TOKEN = process.env.SHOPIFY_ADMIN_API_KEY?.trim();
+const SHOPIFY_ADMIN_URL =
+  process.env.SHOPIFY_ADMIN_URL?.trim() ||
+  "https://006sda-7b.myshopify.com/admin/api/2025-04";
+const SHOPIFY_ADMIN_TOKEN =
+  process.env.SHOPIFY_ADMIN_TOKEN?.trim() ||
+  process.env.SHOPIFY_ADMIN_API_KEY?.trim();
 
 /**
  * StopSuite → Shopify webhook (Vercel)
@@ -17,7 +21,10 @@ export default async function handler(req, res) {
   const signature = req.headers["x-signature"];
   const body = JSON.stringify(req.body);
   const message = `POST|/api/webhooks/stopsuite-complete|${timestamp}|${nonce}|${body}`;
-  const expected = crypto.createHmac("sha256", STOPSUITE_SECRET_KEY).update(message).digest("hex");
+  const expected = crypto
+    .createHmac("sha256", STOPSUITE_SECRET_KEY)
+    .update(message)
+    .digest("hex");
 
   if (signature !== expected) {
     console.warn("⚠️ Invalid StopSuite webhook signature");
@@ -63,7 +70,7 @@ export default async function handler(req, res) {
     const fulfillmentOrdersData = await fulfillmentOrdersRes.json();
     const fulfillmentOrder = fulfillmentOrdersData.fulfillment_orders?.[0];
 
-    // STEP 2️⃣: Build the base fulfillment payload
+    // STEP 2️⃣: Build base payload
     const payload = {
       fulfillment: {
         tracking_info: {
@@ -75,13 +82,11 @@ export default async function handler(req, res) {
       },
     };
 
-    // STEP 3️⃣: Use fulfillment_orders if they exist, fallback if not
+    // STEP 3️⃣: Use fulfillment_orders if available
     let fulfillmentUrl;
     if (fulfillmentOrder) {
       payload.fulfillment.line_items_by_fulfillment_order = [
-        {
-          fulfillment_order_id: fulfillmentOrder.id,
-        },
+        { fulfillment_order_id: fulfillmentOrder.id },
       ];
       fulfillmentUrl = `${SHOPIFY_ADMIN_URL}/fulfillments.json`;
       console.log("📦 Using fulfillment_orders API...");
