@@ -54,6 +54,7 @@ export default async function handler(req, res) {
             service_code: "CARBON_NEGATIVE_LOCAL",
             total_price: "499",
             currency: "USD",
+            location_id: "81390698669",        //  <-- REQUIRED FIX
             min_delivery_date: getDeliveryDate(1),
             max_delivery_date: getDeliveryDate(2),
           },
@@ -63,6 +64,7 @@ export default async function handler(req, res) {
 
     console.log(`[${requestId}] 🚫 Outside StopSuite zone`);
     return res.json({ rates: [] });
+
   } catch (error) {
     console.error(`[${requestId}] ❌ Error:`, error.message);
     return res.json({ rates: [] });
