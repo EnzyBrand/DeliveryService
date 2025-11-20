@@ -2,8 +2,12 @@ import crypto from "crypto";
 import fetch from "node-fetch";
 
 const STOPSUITE_SECRET_KEY = process.env.STOPSUITE_SECRET_KEY?.trim();
-const SHOPIFY_ADMIN_URL = process.env.SHOPIFY_ADMIN_URL?.trim(); // e.g. https://yourstore.myshopify.com/admin/api/2025-04
-const SHOPIFY_ADMIN_TOKEN = process.env.SHOPIFY_ADMIN_TOKEN?.trim();
+const SHOPIFY_ADMIN_URL =
+  process.env.SHOPIFY_ADMIN_URL?.trim() ||
+  "https://006sda-7b.myshopify.com/admin/api/2025-04";
+const SHOPIFY_ADMIN_TOKEN =
+  process.env.SHOPIFY_ADMIN_TOKEN?.trim() ||
+  process.env.SHOPIFY_ADMIN_API_KEY?.trim();
 
 /**
  * StopSuite → Shopify Webhook
@@ -16,52 +20,65 @@ export default async function handler(req, res) {
 
   try {
     // 1️⃣ Extract headers
-    const hmacHeader = req.headers["x-signature"];
+    const signature = req.headers["x-signature"];
     const timestamp = req.headers["x-timestamp"];
     const nonce = req.headers["x-nonce"];
     const body = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
 
     // 2️⃣ Verify StopSuite HMAC signature
+    const message = `POST|/api/webhooks/stopsuite-complete|${timestamp}|${nonce}|${body}`;
     const expected = crypto
       .createHmac("sha256", STOPSUITE_SECRET_KEY)
-      .update(`POST|/api/webhooks/stopsuite-complete/|${timestamp}|${nonce}|${body}`)
+      .update(message)
       .digest("hex");
 
-    if (expected !== hmacHeader) {
+    if (expected !== signature) {
       console.warn("⚠️ Invalid StopSuite webhook signature");
+      console.warn("Expected:", expected);
+      console.warn("Received:", signature);
       return res.status(401).send("Unauthorized");
     }
 
     // 3️⃣ Parse and log webhook
     const webhookData = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
-    console.log("📦 StopSuite webhook received:", webhookData);
+    console.log("📦 StopSuite webhook verified successfully:", webhookData);
 
     if (webhookData?.event === "stop.completed" && webhookData?.stop) {
       const stop = webhookData.stop;
-
       console.log(`✅ Stop completed: stop.id=${stop.id}, order=${stop.order}`);
 
-      // 4️⃣ Extract Shopify order ID from StopSuite external_reference
-      const shopifyOrderId = stop.external_reference?.replace("shopify_", "");
+      // 4️⃣ Extract Shopify order ID
+      const shopifyOrderId =
+        webhookData.external_reference?.replace("shopify_", "") ||
+        stop.external_reference?.replace("shopify_", "");
       if (!shopifyOrderId) {
         console.warn("⚠️ Missing external_reference with Shopify order ID");
-        return res.status(200).send("No Shopify ID found in stop.external_reference");
+        return res.status(200).send("No Shopify ID found");
       }
 
-      // 5️⃣ Fetch order details to get line_item IDs
+      // 5️⃣ Fetch order details
       const orderUrl = `${SHOPIFY_ADMIN_URL}/orders/${shopifyOrderId}.json`;
       const orderResponse = await fetch(orderUrl, {
-        headers: { "X-Shopify-Access-Token": SHOPIFY_ADMIN_TOKEN },
+        headers: {
+          "X-Shopify-Access-Token": SHOPIFY_ADMIN_TOKEN,
+          Accept: "application/json",
+        },
       });
 
       if (!orderResponse.ok) {
         const errText = await orderResponse.text();
         console.error("❌ Failed to fetch order from Shopify:", errText);
-        return res.status(500).send("Error fetching order details");
+        return res
+          .status(500)
+          .json({ error: "Error fetching order details", raw: errText });
       }
 
       const orderData = await orderResponse.json();
-      const lineItems = orderData?.order?.line_items?.map((item) => ({ id: item.id })) || [];
+      const lineItems =
+        orderData?.order?.line_items?.map((item) => ({
+          id: item.id,
+          quantity: item.quantity,
+        })) || [];
 
       if (lineItems.length === 0) {
         console.warn("⚠️ No line_items found for order", shopifyOrderId);
@@ -78,23 +95,33 @@ export default async function handler(req, res) {
         },
       };
 
+      // 7️⃣ Create fulfillment
       const fulfillmentUrl = `${SHOPIFY_ADMIN_URL}/orders/${shopifyOrderId}/fulfillments.json`;
       const fulfillmentResponse = await fetch(fulfillmentUrl, {
         method: "POST",
         headers: {
           "X-Shopify-Access-Token": SHOPIFY_ADMIN_TOKEN,
           "Content-Type": "application/json",
+          Accept: "application/json", // ✅ Required for Shopify REST API
         },
         body: JSON.stringify(payload),
       });
 
-      const fulfillmentData = await fulfillmentResponse.json();
-      console.log("✅ Shopify order fulfillment response:", fulfillmentData);
+      const text = await fulfillmentResponse.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { raw: text, status: fulfillmentResponse.status };
+        console.warn("⚠️ Shopify returned non-JSON or empty response:", text);
+      }
+
+      console.log("✅ Shopify fulfillment response:", data);
     }
 
     return res.status(200).send("OK");
   } catch (err) {
     console.error("❌ Webhook processing error:", err);
-    return res.status(500).send("Error");
+    return res.status(500).json({ error: err.message });
   }
 }
